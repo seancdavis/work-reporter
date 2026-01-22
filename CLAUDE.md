@@ -78,10 +78,10 @@ npm run preview  # Preview production build
 ## Implementation Status
 
 - [x] Phase 1: Project Setup
-- [ ] Phase 2: Database & Auth
-- [ ] Phase 3: Linear Integration
-- [ ] Phase 4: Daily Standups
-- [ ] Phase 5: Weekly Standups
-- [ ] Phase 6: Weekly Reports
-- [ ] Phase 7: Kudos System
+- [x] Phase 2: Database & Auth
+- [x] Phase 3: Linear Integration
+- [x] Phase 4: Daily Standups
+- [x] Phase 5: Weekly Standups
+- [x] Phase 6: Weekly Reports
+- [x] Phase 7: Kudos System
 - [ ] Phase 8: Polish & Deploy
