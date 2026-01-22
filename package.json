@@ -16,6 +16,8 @@
     "@netlify/blobs": "^10.5.0",
     "@netlify/neon": "^0.1.2",
     "drizzle-orm": "^0.45.1",
+    "lucide-react": "^0.562.0",
+    "marked": "^17.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.12.0"
@@ -25,6 +27,7 @@
     "@netlify/functions": "^5.1.2",
     "@netlify/vite-plugin": "^2.7.20",
     "@tailwindcss/vite": "^4.1.18",
+    "@types/marked": "^5.0.2",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",

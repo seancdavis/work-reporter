@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
+import { Lock } from "lucide-react";
 import { dailyStandups, type DailyStandup } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/Button";
 import { TextArea } from "../components/TextArea";
 import { IssueSelector } from "../components/IssueSelector";
-import { formatDate, formatDateDisplay, formatDateShort, cn } from "../lib/utils";
+import { MarkdownContent } from "../components/MarkdownContent";
+import { AICleanupButton } from "../components/AICleanupButton";
+import { formatDate, formatDateDisplay, formatDateShort, timeAgo, cn } from "../lib/utils";
 
 export function DailyPage() {
   const { status } = useAuth();
@@ -92,6 +95,11 @@ export function DailyPage() {
 
   const currentStandup = standups.find((s) => s.date === selectedDate);
 
+  // Filter linked issues for public view (hide SCD- prefixed issues)
+  const visibleLinkedIssues = isAdmin
+    ? linkedIssues
+    : linkedIssues.filter((issue) => !issue.identifier.startsWith("SCD-"));
+
   return (
     <div className="space-y-8">
       <div>
@@ -140,44 +148,140 @@ export function DailyPage() {
             </h2>
             {currentStandup && (
               <p className="text-sm text-gray-500 mb-6">
-                Last updated:{" "}
-                {new Date(currentStandup.updated_at).toLocaleString()}
+                Last updated: {timeAgo(currentStandup.updated_at)}
               </p>
             )}
 
             <div className="space-y-6">
-              <TextArea
-                label="What did you accomplish yesterday?"
-                value={yesterdaySummary}
-                onChange={(e) => setYesterdaySummary(e.target.value)}
-                placeholder="Describe what you completed..."
-                rows={4}
-                disabled={!isAdmin}
-              />
+              {/* Yesterday's Summary - hide entire section in public view if no content */}
+              {(isAdmin || currentStandup?.yesterday_summary_html) && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      What did you accomplish yesterday?
+                    </label>
+                    {isAdmin && (
+                      <AICleanupButton
+                        field="yesterday_summary"
+                        content={yesterdaySummary}
+                        onCleanup={setYesterdaySummary}
+                      />
+                    )}
+                  </div>
+                  {isAdmin ? (
+                    <TextArea
+                      value={yesterdaySummary}
+                      onChange={(e) => setYesterdaySummary(e.target.value)}
+                      placeholder="Describe what you completed..."
+                      rows={3}
+                    />
+                  ) : (
+                    <MarkdownContent html={currentStandup!.yesterday_summary_html!} />
+                  )}
+                </div>
+              )}
 
-              <TextArea
-                label="What are you planning for today?"
-                value={todayPlan}
-                onChange={(e) => setTodayPlan(e.target.value)}
-                placeholder="List your goals for today..."
-                rows={4}
-                disabled={!isAdmin}
-              />
+              {/* Today's Plan - hide entire section in public view if no content */}
+              {(isAdmin || currentStandup?.today_plan_html) && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      What are you planning for today?
+                    </label>
+                    {isAdmin && (
+                      <AICleanupButton
+                        field="today_plan"
+                        content={todayPlan}
+                        onCleanup={setTodayPlan}
+                      />
+                    )}
+                  </div>
+                  {isAdmin ? (
+                    <TextArea
+                      value={todayPlan}
+                      onChange={(e) => setTodayPlan(e.target.value)}
+                      placeholder="List your goals for today..."
+                      rows={3}
+                    />
+                  ) : (
+                    <MarkdownContent html={currentStandup!.today_plan_html!} />
+                  )}
+                </div>
+              )}
 
-              <TextArea
-                label="Any blockers?"
-                value={blockers}
-                onChange={(e) => setBlockers(e.target.value)}
-                placeholder="Describe any blockers or issues..."
-                rows={2}
-                disabled={!isAdmin}
-              />
+              {/* Blockers - hide entire section in public view if no content */}
+              {(isAdmin || currentStandup?.blockers_html) && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Any blockers?
+                    </label>
+                    {isAdmin && (
+                      <AICleanupButton
+                        field="blockers"
+                        content={blockers}
+                        onCleanup={setBlockers}
+                      />
+                    )}
+                  </div>
+                  {isAdmin ? (
+                    <TextArea
+                      value={blockers}
+                      onChange={(e) => setBlockers(e.target.value)}
+                      placeholder="Describe any blockers or issues..."
+                      rows={2}
+                    />
+                  ) : (
+                    <MarkdownContent html={currentStandup!.blockers_html!} />
+                  )}
+                </div>
+              )}
 
-              <IssueSelector
-                selectedIssues={linkedIssues}
-                onSelect={setLinkedIssues}
-                disabled={!isAdmin}
-              />
+              {/* Linked Issues - only show if admin or there are visible issues */}
+              {(isAdmin || visibleLinkedIssues.length > 0) && (
+                <div>
+                  {isAdmin ? (
+                    <>
+                      <IssueSelector
+                        selectedIssues={linkedIssues}
+                        onSelect={setLinkedIssues}
+                      />
+                      {/* Show lock icon for private SCD- issues in admin view */}
+                      {linkedIssues.some((issue) => issue.identifier.startsWith("SCD-")) && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {linkedIssues
+                            .filter((issue) => issue.identifier.startsWith("SCD-"))
+                            .map((issue) => (
+                              <span
+                                key={issue.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
+                              >
+                                {issue.identifier}
+                                <Lock className="w-3 h-3 text-gray-400" />
+                              </span>
+                            ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Linked Issues
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {visibleLinkedIssues.map((issue) => (
+                          <span
+                            key={issue.id}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            {issue.identifier}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {isAdmin && (
                 <div className="flex justify-end">
@@ -185,12 +289,6 @@ export function DailyPage() {
                     Save Standup
                   </Button>
                 </div>
-              )}
-
-              {!isAdmin && (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  Login as admin to edit standups
-                </p>
               )}
             </div>
           </div>

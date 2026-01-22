@@ -3,6 +3,7 @@ import { db, schema } from "./_shared/db";
 import { eq, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "./_shared/auth";
 import { formatDate, getWeekEnd } from "./_shared/utils";
+import { parseMarkdown } from "./_shared/markdown";
 
 export default async (req: Request, context: Context) => {
   const url = new URL(req.url);
@@ -44,8 +45,11 @@ export default async (req: Request, context: Context) => {
         id: s.id,
         date: s.date,
         yesterday_summary: s.yesterdaySummary,
+        yesterday_summary_html: s.yesterdaySummaryHtml,
         today_plan: s.todayPlan,
+        today_plan_html: s.todayPlanHtml,
         blockers: s.blockers,
+        blockers_html: s.blockersHtml,
         linked_issues: s.linkedIssues,
         created_at: s.createdAt,
         updated_at: s.updatedAt,
@@ -79,6 +83,11 @@ export default async (req: Request, context: Context) => {
         return Response.json({ error: "Date is required" }, { status: 400 });
       }
 
+      // Parse markdown to HTML
+      const yesterdaySummaryHtml = parseMarkdown(yesterday_summary);
+      const todayPlanHtml = parseMarkdown(today_plan);
+      const blockersHtml = parseMarkdown(blockers);
+
       const existing = await db
         .select()
         .from(schema.dailyStandups)
@@ -91,8 +100,11 @@ export default async (req: Request, context: Context) => {
           .update(schema.dailyStandups)
           .set({
             yesterdaySummary: yesterday_summary || null,
+            yesterdaySummaryHtml: yesterdaySummaryHtml,
             todayPlan: today_plan || null,
+            todayPlanHtml: todayPlanHtml,
             blockers: blockers || null,
+            blockersHtml: blockersHtml,
             linkedIssues: linked_issues,
             updatedAt: new Date(),
           })
@@ -105,8 +117,11 @@ export default async (req: Request, context: Context) => {
           .values({
             date,
             yesterdaySummary: yesterday_summary || null,
+            yesterdaySummaryHtml: yesterdaySummaryHtml,
             todayPlan: today_plan || null,
+            todayPlanHtml: todayPlanHtml,
             blockers: blockers || null,
+            blockersHtml: blockersHtml,
             linkedIssues: linked_issues,
           })
           .returning();
@@ -117,8 +132,11 @@ export default async (req: Request, context: Context) => {
         id: result.id,
         date: result.date,
         yesterday_summary: result.yesterdaySummary,
+        yesterday_summary_html: result.yesterdaySummaryHtml,
         today_plan: result.todayPlan,
+        today_plan_html: result.todayPlanHtml,
         blockers: result.blockers,
+        blockers_html: result.blockersHtml,
         linked_issues: result.linkedIssues,
         created_at: result.createdAt,
         updated_at: result.updatedAt,

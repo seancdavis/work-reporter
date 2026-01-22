@@ -1,3 +1,5 @@
+import { Netlify } from "@netlify/functions";
+
 const AI_MODEL = "claude-haiku-4-5-20251001";
 
 interface AIMessage {
@@ -9,17 +11,25 @@ export async function generateAIResponse(
   systemPrompt: string,
   userMessage: string
 ): Promise<string> {
-  // Using Netlify AI Gateway - it's available at a special URL when running on Netlify
-  const aiGatewayUrl = process.env.AI_GATEWAY_URL || "https://api.anthropic.com/v1/messages";
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // Use Netlify AI Gateway via ANTHROPIC_BASE_URL
+  const baseUrl = Netlify.env.get("ANTHROPIC_BASE_URL");
+  const apiKey = Netlify.env.get("ANTHROPIC_API_KEY");
 
   if (!apiKey) {
     console.error("ANTHROPIC_API_KEY not configured");
     return "";
   }
 
+  if (!baseUrl) {
+    console.error("ANTHROPIC_BASE_URL not configured");
+    return "";
+  }
+
+  // Construct the messages endpoint URL
+  const messagesUrl = `${baseUrl}/messages`;
+
   try {
-    const response = await fetch(aiGatewayUrl, {
+    const response = await fetch(messagesUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

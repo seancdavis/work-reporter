@@ -38,8 +38,11 @@ export interface DailyStandup {
   id: number;
   date: string;
   yesterday_summary: string | null;
+  yesterday_summary_html: string | null;
   today_plan: string | null;
+  today_plan_html: string | null;
   blockers: string | null;
+  blockers_html: string | null;
   linked_issues: Array<{ id: string; identifier: string; title: string }>;
   created_at: string;
   updated_at: string;
@@ -336,5 +339,14 @@ export const research = {
   delete: (id: number) =>
     fetchApi<{ success: boolean }>(`/research?id=${id}`, {
       method: "DELETE",
+    }),
+};
+
+// AI API
+export const ai = {
+  cleanup: (field: string, content: string) =>
+    fetchApi<{ cleaned: string }>("/ai-cleanup", {
+      method: "POST",
+      body: JSON.stringify({ field, content }),
     }),
 };

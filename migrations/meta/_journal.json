@@ -15,6 +15,13 @@
       "when": 1769084446976,
       "tag": "0001_boring_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769115852245,
+      "tag": "0002_oval_slyde",
+      "breakpoints": true
     }
   ]
 }
