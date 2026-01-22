@@ -1,0 +1,6 @@
+[dev]
+command = "npm run dev"
+targetPort = 5175
+
+# [functions]
+# directory = "netlify/functions"
