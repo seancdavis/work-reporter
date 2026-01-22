@@ -30,7 +30,7 @@ interface LinearResponse {
 }
 
 export async function getActiveIssues(): Promise<LinearIssue[]> {
-  const apiKey = process.env.LINEAR_API_KEY;
+  const apiKey = Netlify.env.get("LINEAR_API_KEY");
 
   if (!apiKey) {
     console.error("LINEAR_API_KEY not configured");
@@ -87,8 +87,12 @@ export async function getActiveIssues(): Promise<LinearIssue[]> {
       return [];
     }
 
-    const data: LinearResponse = await response.json();
-    return data.data.viewer.assignedIssues.nodes;
+    const data = await response.json();
+    if (data.errors) {
+      console.error("Linear GraphQL errors:", data.errors);
+      return [];
+    }
+    return data.data?.viewer?.assignedIssues?.nodes || [];
   } catch (error) {
     console.error("Error fetching Linear issues:", error);
     return [];
@@ -96,7 +100,7 @@ export async function getActiveIssues(): Promise<LinearIssue[]> {
 }
 
 export async function getIssuesByIds(issueIds: string[]): Promise<LinearIssue[]> {
-  const apiKey = process.env.LINEAR_API_KEY;
+  const apiKey = Netlify.env.get("LINEAR_API_KEY");
 
   if (!apiKey || issueIds.length === 0) {
     return [];
@@ -143,7 +147,11 @@ export async function getIssuesByIds(issueIds: string[]): Promise<LinearIssue[]>
     }
 
     const data = await response.json();
-    return data.data.issues.nodes;
+    if (data.errors) {
+      console.error("Linear GraphQL errors:", data.errors);
+      return [];
+    }
+    return data.data?.issues?.nodes || [];
   } catch (error) {
     console.error("Error fetching Linear issues by IDs:", error);
     return [];
@@ -152,36 +160,76 @@ export async function getIssuesByIds(issueIds: string[]): Promise<LinearIssue[]>
 
 // Search issues by identifier (e.g., "ENG-123") or title
 export async function searchIssues(searchTerm: string): Promise<LinearIssue[]> {
-  const apiKey = process.env.LINEAR_API_KEY;
+  const apiKey = Netlify.env.get("LINEAR_API_KEY");
 
   if (!apiKey || !searchTerm) {
     return [];
   }
 
-  const query = `
-    query SearchIssues($term: String!) {
-      issueSearch(query: $term, first: 20) {
-        nodes {
-          id
-          identifier
-          title
-          url
-          state {
-            name
-            type
+  // Check if search term looks like an issue identifier (e.g., "ENG-123")
+  const identifierMatch = searchTerm.match(/^([A-Z]+-\d+)$/i);
+
+  let query: string;
+  let variables: Record<string, unknown>;
+
+  if (identifierMatch) {
+    // Search by exact identifier
+    const [teamKey, numberStr] = searchTerm.toUpperCase().split("-");
+    const number = parseInt(numberStr, 10);
+
+    query = `
+      query SearchByIdentifier($teamKey: String!, $number: Float!) {
+        issues(filter: { team: { key: { eq: $teamKey } }, number: { eq: $number }, assignee: { isMe: { eq: true } } }, first: 1) {
+          nodes {
+            id
+            identifier
+            title
+            url
+            state {
+              name
+              type
+            }
+            team {
+              name
+              key
+            }
+            priority
+            priorityLabel
+            createdAt
+            updatedAt
           }
-          team {
-            name
-            key
-          }
-          priority
-          priorityLabel
-          createdAt
-          updatedAt
         }
       }
-    }
-  `;
+    `;
+    variables = { teamKey, number };
+  } else {
+    // Search by title (containsIgnoreCase)
+    query = `
+      query SearchByTitle($term: String!) {
+        issues(filter: { title: { containsIgnoreCase: $term }, assignee: { isMe: { eq: true } } }, first: 20) {
+          nodes {
+            id
+            identifier
+            title
+            url
+            state {
+              name
+              type
+            }
+            team {
+              name
+              key
+            }
+            priority
+            priorityLabel
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+    variables = { term: searchTerm };
+  }
 
   try {
     const response = await fetch(LINEAR_API_URL, {
@@ -190,7 +238,7 @@ export async function searchIssues(searchTerm: string): Promise<LinearIssue[]> {
         "Content-Type": "application/json",
         Authorization: apiKey,
       },
-      body: JSON.stringify({ query, variables: { term: searchTerm } }),
+      body: JSON.stringify({ query, variables }),
     });
 
     if (!response.ok) {
@@ -199,7 +247,11 @@ export async function searchIssues(searchTerm: string): Promise<LinearIssue[]> {
     }
 
     const data = await response.json();
-    return data.data.issueSearch.nodes;
+    if (data.errors) {
+      console.error("Linear GraphQL errors:", data.errors);
+      return [];
+    }
+    return data.data?.issues?.nodes || [];
   } catch (error) {
     console.error("Error searching Linear issues:", error);
     return [];
