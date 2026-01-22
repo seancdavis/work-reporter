@@ -52,7 +52,7 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/weekly-reports/generate - Generate AI summary for a week
   if (request.method === "POST" && url.pathname.endsWith("/generate")) {
-    const auth = await requireAuth(context, "admin", request);
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -155,7 +155,7 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/weekly-reports - Manually save/update a report
   if (request.method === "POST") {
-    const auth = await requireAuth(context, "admin", request);
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

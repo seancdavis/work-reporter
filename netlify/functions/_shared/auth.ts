@@ -1,6 +1,5 @@
 import { db, schema } from "./db";
 import { eq } from "drizzle-orm";
-import type { Context } from "@netlify/functions";
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -24,17 +23,17 @@ export async function createSession(type: "admin" | "kudos"): Promise<string> {
 }
 
 export async function validateSession(
-  sessionId: string | null,
+  token: string | null,
   requiredType?: "admin" | "kudos"
 ): Promise<{ valid: boolean; type?: string }> {
-  if (!sessionId) {
+  if (!token) {
     return { valid: false };
   }
 
   const result = await db
     .select()
     .from(schema.sessions)
-    .where(eq(schema.sessions.id, sessionId))
+    .where(eq(schema.sessions.id, token))
     .limit(1);
 
   if (result.length === 0) {
@@ -60,8 +59,8 @@ export async function validateSession(
   return { valid: true, type: session.type };
 }
 
-export async function deleteSession(sessionId: string): Promise<void> {
-  await db.delete(schema.sessions).where(eq(schema.sessions.id, sessionId));
+export async function deleteSession(token: string): Promise<void> {
+  await db.delete(schema.sessions).where(eq(schema.sessions.id, token));
 }
 
 export function verifyPassword(password: string, type: "admin" | "kudos"): boolean {
@@ -73,32 +72,22 @@ export function verifyPassword(password: string, type: "admin" | "kudos"): boole
   return password === expectedPassword;
 }
 
-// Helper to parse session from Cookie header
-export function parseSessionFromCookies(cookieHeader: string | null): string | undefined {
-  if (!cookieHeader) return undefined;
-  const cookies = Object.fromEntries(
-    cookieHeader.split(";").map((c) => {
-      const [key, ...val] = c.trim().split("=");
-      return [key, val.join("=")];
-    })
-  );
-  return cookies["session"];
+// Extract token from Authorization header (Bearer token)
+export function getTokenFromRequest(req: Request): string | null {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+  return authHeader.slice(7); // Remove "Bearer " prefix
 }
 
-// Helper to check auth using context.cookies or Cookie header fallback
+// Helper to check auth using Authorization header
 export async function requireAuth(
-  context: Context,
-  requiredType?: "admin" | "kudos",
-  req?: Request
+  req: Request,
+  requiredType?: "admin" | "kudos"
 ): Promise<{ authorized: boolean; type?: string }> {
-  // Try context.cookies first, then fall back to parsing Cookie header
-  let sessionId = context.cookies.get("session");
-
-  if (!sessionId && req) {
-    sessionId = parseSessionFromCookies(req.headers.get("Cookie"));
-  }
-
-  const { valid, type } = await validateSession(sessionId || null, requiredType);
+  const token = getTokenFromRequest(req);
+  const { valid, type } = await validateSession(token, requiredType);
 
   return { authorized: valid, type };
 }

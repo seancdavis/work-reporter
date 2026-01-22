@@ -60,7 +60,7 @@ export default async (req: Request, context: Context) => {
 
   // POST - Create or update standup
   if (req.method === "POST") {
-    const auth = await requireAuth(context, "admin", req);
+    const auth = await requireAuth(req, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -131,7 +131,7 @@ export default async (req: Request, context: Context) => {
 
   // DELETE
   if (req.method === "DELETE") {
-    const auth = await requireAuth(context, "admin", req);
+    const auth = await requireAuth(req, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

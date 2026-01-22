@@ -41,7 +41,7 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/kudos - Create a new kudo (requires kudos auth)
   if (request.method === "POST") {
-    const auth = await requireAuth(context, "kudos", request);
+    const auth = await requireAuth(request, "kudos");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -126,7 +126,7 @@ export default async (request: Request, context: Context) => {
 
   // PUT /api/kudos/:id - Update a kudo
   if (request.method === "PUT") {
-    const auth = await requireAuth(context, "kudos", request);
+    const auth = await requireAuth(request, "kudos");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -184,7 +184,7 @@ export default async (request: Request, context: Context) => {
 
   // DELETE /api/kudos?id=123
   if (request.method === "DELETE") {
-    const auth = await requireAuth(context, "kudos", request);
+    const auth = await requireAuth(request, "kudos");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

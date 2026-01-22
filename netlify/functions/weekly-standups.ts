@@ -51,7 +51,7 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/weekly-standups - Create or update a weekly standup
   if (request.method === "POST") {
-    const auth = await requireAuth(context, "admin", request);
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -126,7 +126,7 @@ export default async (request: Request, context: Context) => {
 
   // DELETE /api/weekly-standups?week=YYYY-MM-DD
   if (request.method === "DELETE") {
-    const auth = await requireAuth(context, "admin", request);
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

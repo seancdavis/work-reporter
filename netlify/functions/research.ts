@@ -45,7 +45,7 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/research - Add a new research item (from Linear issue)
   if (request.method === "POST") {
-    const auth = await requireAuth(context, "admin", request);
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -130,7 +130,7 @@ export default async (request: Request, context: Context) => {
 
   // PUT /api/research?id=X - Update a research item (move, reorder, add notes)
   if (request.method === "PUT") {
-    const auth = await requireAuth(context, "admin", request);
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -189,7 +189,7 @@ export default async (request: Request, context: Context) => {
 
   // PATCH /api/research/reorder - Batch reorder items
   if (request.method === "PATCH") {
-    const auth = await requireAuth(context, "admin", request);
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -229,7 +229,7 @@ export default async (request: Request, context: Context) => {
 
   // DELETE /api/research?id=X - Remove item from board
   if (request.method === "DELETE") {
-    const auth = await requireAuth(context, "admin", request);
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

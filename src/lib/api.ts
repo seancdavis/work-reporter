@@ -1,6 +1,20 @@
 // API client for work-tracker
 
 const API_BASE = "/api";
+const TOKEN_KEY = "work-tracker-token";
+
+// Token storage helpers
+function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
 
 // Types
 export interface LinearIssue {
@@ -91,13 +105,19 @@ async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    credentials: "include",
+    headers,
   });
 
   if (!response.ok) {
@@ -112,16 +132,24 @@ async function fetchApi<T>(
 export const auth = {
   status: () => fetchApi<AuthStatus>("/auth"),
 
-  login: (password: string, type: "admin" | "kudos" = "admin") =>
-    fetchApi<{ success: boolean; type: string }>("/auth", {
+  login: async (password: string, type: "admin" | "kudos" = "admin") => {
+    const result = await fetchApi<{ success: boolean; type: string; token: string }>("/auth", {
       method: "POST",
       body: JSON.stringify({ password, type }),
-    }),
+    });
+    if (result.token) {
+      setToken(result.token);
+    }
+    return result;
+  },
 
-  logout: () =>
-    fetchApi<{ success: boolean }>("/auth", {
+  logout: async () => {
+    const result = await fetchApi<{ success: boolean }>("/auth", {
       method: "DELETE",
-    }),
+    });
+    clearToken();
+    return result;
+  },
 };
 
 // Daily Standups API
@@ -228,10 +256,16 @@ export const kudos = {
       if (data.tags) formData.append("tags", JSON.stringify(data.tags));
       formData.append("screenshot", data.screenshot);
 
+      const token = getToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE}/kudos`, {
         method: "POST",
         body: formData,
-        credentials: "include",
+        headers,
       });
 
       if (!response.ok) {
