@@ -49,3 +49,17 @@ export const sessions = pgTable('sessions', {
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// Research kanban board items - linked to Linear issues
+export const researchItems = pgTable('research_items', {
+  id: serial('id').primaryKey(),
+  linearIssueId: text('linear_issue_id').notNull().unique(),
+  linearIssueIdentifier: text('linear_issue_identifier').notNull(), // e.g., "ENG-123"
+  linearIssueTitle: text('linear_issue_title').notNull(),
+  linearIssueUrl: text('linear_issue_url').notNull(),
+  column: text('column').notNull().default('backlog'), // backlog, exploring, deep_dive, synthesizing, parked
+  displayOrder: integer('display_order').notNull().default(0),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});

@@ -4,6 +4,7 @@ import { DailyPage } from "./pages/DailyPage";
 import { WeeklyPage } from "./pages/WeeklyPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { KudosPage } from "./pages/KudosPage";
+import { ResearchPage } from "./pages/ResearchPage";
 import { AuthPage } from "./pages/AuthPage";
 import { AuthContext, useAuthProvider } from "./hooks/useAuth";
 
@@ -26,6 +27,7 @@ function AppContent() {
             <Route path="/" element={<DailyPage />} />
             <Route path="/weekly" element={<WeeklyPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/research" element={<ResearchPage />} />
             <Route path="/kudos" element={<KudosPage />} />
             <Route path="/auth" element={<AuthPage />} />
           </Routes>

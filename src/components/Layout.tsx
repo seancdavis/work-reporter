@@ -6,6 +6,7 @@ const navItems = [
   { path: "/", label: "Daily" },
   { path: "/weekly", label: "Weekly" },
   { path: "/reports", label: "Reports" },
+  { path: "/research", label: "Research" },
   { path: "/kudos", label: "Kudos" },
 ];
 

@@ -67,6 +67,7 @@ npm run db:studio     # Open Drizzle Studio GUI
 5. **Linear Integration** - Fetch active issues, link to reports
 6. **AI Processing** - Structure free-form input, link issues
 7. **Authentication** - Password-based admin mode vs read-only
+8. **Research Kanban Board** - Drag-and-drop board to track research items linked to Linear issues
 
 ## Authentication Model
 
@@ -79,6 +80,23 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 - Fetch issues assigned to user from both teams
 - Filter by statuses: Todo, In Progress, In Review
+
+## Research Kanban Board
+
+A drag-and-drop kanban board for tracking research topics linked to Linear issues.
+
+**Columns:**
+- Backlog - Issues to research later
+- Exploring - Currently doing initial research
+- Deep Dive - In-depth investigation
+- Synthesizing - Pulling together findings
+- Parked - Research paused or deprioritized
+
+**Features:**
+- Search and add Linear issues to the board
+- Drag-and-drop to move between columns
+- Add notes to each research item
+- Links directly to Linear issues for full context
 
 ## Commands
 

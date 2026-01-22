@@ -71,6 +71,21 @@ export interface AuthStatus {
   type: "admin" | "kudos" | null;
 }
 
+export type ResearchColumn = "backlog" | "exploring" | "deep_dive" | "synthesizing" | "parked";
+
+export interface ResearchItem {
+  id: number;
+  linear_issue_id: string;
+  linear_issue_identifier: string;
+  linear_issue_title: string;
+  linear_issue_url: string;
+  column: ResearchColumn;
+  display_order: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Helper function
 async function fetchApi<T>(
   endpoint: string,
@@ -255,5 +270,37 @@ export const linear = {
     fetchApi<LinearIssue[]>(`/linear?search=${encodeURIComponent(query)}`),
 };
 
-// Database init
-export const initDb = () => fetchApi<{ success: boolean; message: string }>("/init-db");
+// Research Kanban API
+export const research = {
+  list: () => fetchApi<ResearchItem[]>("/research"),
+
+  add: (issue: LinearIssue, column: ResearchColumn = "backlog", notes?: string) =>
+    fetchApi<ResearchItem>("/research", {
+      method: "POST",
+      body: JSON.stringify({
+        linear_issue_id: issue.id,
+        linear_issue_identifier: issue.identifier,
+        linear_issue_title: issue.title,
+        linear_issue_url: issue.url,
+        column,
+        notes,
+      }),
+    }),
+
+  update: (id: number, data: { column?: ResearchColumn; display_order?: number; notes?: string }) =>
+    fetchApi<ResearchItem>(`/research?id=${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  reorder: (items: Array<{ id: number; column: ResearchColumn; display_order: number }>) =>
+    fetchApi<{ success: boolean }>("/research", {
+      method: "PATCH",
+      body: JSON.stringify({ items }),
+    }),
+
+  delete: (id: number) =>
+    fetchApi<{ success: boolean }>(`/research?id=${id}`, {
+      method: "DELETE",
+    }),
+};
