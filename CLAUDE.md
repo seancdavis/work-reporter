@@ -38,12 +38,25 @@ A work reporting application for:
 ## Environment Variables Required
 
 ```env
-DATABASE_URL=postgresql://...
+NETLIFY_DATABASE_URL=postgresql://...  # Set automatically by Netlify DB
 LINEAR_API_KEY=lin_api_...
 ADMIN_PASSWORD=...
 KUDOS_PASSWORD=...
-AUTH_SECRET=...
+ANTHROPIC_API_KEY=...  # For AI summaries (optional)
 ```
+
+## Database (Drizzle ORM)
+
+Schema is defined in `db/schema.ts`. Migrations are in `migrations/`.
+
+**Database Commands (always use `netlify db` commands):**
+```bash
+npm run db:generate   # Generate migrations from schema changes
+npm run db:migrate    # Apply migrations (uses netlify dev:exec)
+npm run db:studio     # Open Drizzle Studio GUI
+```
+
+**Important:** Never run raw drizzle-kit commands directly. Always use the npm scripts which route through Netlify CLI to ensure proper environment variables.
 
 ## Key Features (MVP)
 
