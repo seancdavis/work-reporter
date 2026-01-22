@@ -1,27 +1,23 @@
-import type { Context } from "@netlify/functions";
+import type { Context, Config } from "@netlify/functions";
 import { getScreenshot } from "./_shared/blobs";
-import { errorResponse, handleCors } from "./_shared/utils";
 
 export default async (request: Request, context: Context) => {
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
-
   if (request.method !== "GET") {
-    return errorResponse("Method not allowed", 405);
+    return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
   const url = new URL(request.url);
   const key = url.searchParams.get("key");
 
   if (!key) {
-    return errorResponse("Key parameter required", 400);
+    return Response.json({ error: "Key parameter required" }, { status: 400 });
   }
 
   try {
     const screenshot = await getScreenshot(key);
 
     if (!screenshot) {
-      return errorResponse("Screenshot not found", 404);
+      return Response.json({ error: "Screenshot not found" }, { status: 404 });
     }
 
     return new Response(screenshot.data, {
@@ -33,6 +29,10 @@ export default async (request: Request, context: Context) => {
     });
   } catch (error) {
     console.error("Error fetching screenshot:", error);
-    return errorResponse("Failed to fetch screenshot", 500);
+    return Response.json({ error: "Failed to fetch screenshot" }, { status: 500 });
   }
+};
+
+export const config: Config = {
+  path: "/api/screenshots",
 };

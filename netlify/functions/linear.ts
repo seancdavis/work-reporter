@@ -1,13 +1,9 @@
-import type { Context } from "@netlify/functions";
+import type { Context, Config } from "@netlify/functions";
 import { getActiveIssues, searchIssues } from "./_shared/linear";
-import { jsonResponse, errorResponse, handleCors, corsHeaders } from "./_shared/utils";
 
 export default async (request: Request, context: Context) => {
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
-
   if (request.method !== "GET") {
-    return errorResponse("Method not allowed", 405);
+    return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
   const url = new URL(request.url);
@@ -16,13 +12,17 @@ export default async (request: Request, context: Context) => {
   try {
     if (searchParam) {
       const issues = await searchIssues(searchParam);
-      return jsonResponse(issues, 200, corsHeaders());
+      return Response.json(issues);
     } else {
       const issues = await getActiveIssues();
-      return jsonResponse(issues, 200, corsHeaders());
+      return Response.json(issues);
     }
   } catch (error) {
     console.error("Error fetching Linear issues:", error);
-    return errorResponse("Failed to fetch issues", 500);
+    return Response.json({ error: "Failed to fetch issues" }, { status: 500 });
   }
+};
+
+export const config: Config = {
+  path: "/api/linear",
 };

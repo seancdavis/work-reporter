@@ -7,8 +7,13 @@ import { TextArea } from "../components/TextArea";
 import { formatDate, formatDateDisplay } from "../lib/utils";
 
 export function KudosPage() {
-  const { status } = useAuth();
-  const canEdit = status.authenticated && (status.type === "admin" || status.type === "kudos");
+  const { status, login } = useAuth();
+  const isAuthenticated = status.authenticated && (status.type === "admin" || status.type === "kudos");
+
+  // Login gate state
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loggingIn, setLoggingIn] = useState(false);
 
   const [kudosList, setKudosList] = useState<Kudo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +28,24 @@ export function KudosPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
+
+  // Handle kudos login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    setLoggingIn(true);
+
+    try {
+      const success = await login(password, "kudos");
+      if (!success) {
+        setLoginError("Invalid password");
+      }
+    } catch (err) {
+      setLoginError("Login failed");
+    } finally {
+      setLoggingIn(false);
+    }
+  };
 
   // Fetch kudos
   useEffect(() => {
@@ -113,6 +136,36 @@ export function KudosPage() {
     .map(Number)
     .sort((a, b) => b - a);
 
+  // Login gate - require authentication to view kudos
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-md mx-auto mt-16">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold text-gray-900">Kudos</h1>
+          <p className="text-gray-600 mt-2">
+            Login to view and manage kudos.
+          </p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <Input
+            type="password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter kudos password"
+            error={loginError}
+            autoFocus
+          />
+
+          <Button type="submit" loading={loggingIn} className="w-full">
+            Login
+          </Button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -122,15 +175,13 @@ export function KudosPage() {
             Recognition and positive feedback for promotion evidence.
           </p>
         </div>
-        {canEdit && (
-          <Button onClick={() => setShowForm(!showForm)}>
-            {showForm ? "Cancel" : "Add Kudo"}
-          </Button>
-        )}
+        <Button onClick={() => setShowForm(!showForm)}>
+          {showForm ? "Cancel" : "Add Kudo"}
+        </Button>
       </div>
 
       {/* Add Kudo Form */}
-      {showForm && canEdit && (
+      {showForm && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">
             Record New Kudo
@@ -267,11 +318,9 @@ export function KudosPage() {
       ) : kudosList.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500">No kudos recorded yet.</p>
-          {canEdit && (
-            <Button className="mt-4" onClick={() => setShowForm(true)}>
-              Add Your First Kudo
-            </Button>
-          )}
+          <Button className="mt-4" onClick={() => setShowForm(true)}>
+            Add Your First Kudo
+          </Button>
         </div>
       ) : (
         <div className="space-y-8">
@@ -324,26 +373,24 @@ export function KudosPage() {
                           </div>
                         )}
                       </div>
-                      {canEdit && (
-                        <button
-                          onClick={() => handleDelete(kudo.id)}
-                          className="text-gray-400 hover:text-red-500"
+                      <button
+                        onClick={() => handleDelete(kudo.id)}
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      )}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -351,12 +398,6 @@ export function KudosPage() {
             </div>
           ))}
         </div>
-      )}
-
-      {!canEdit && (
-        <p className="text-sm text-gray-500 text-center py-4">
-          Login to add or edit kudos
-        </p>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 // API client for work-tracker
 
-const API_BASE = "/.netlify/functions";
+const API_BASE = "/api";
 
 // Types
 export interface LinearIssue {

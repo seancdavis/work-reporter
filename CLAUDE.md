@@ -1,5 +1,20 @@
 # Work Tracker - Project Context
 
+## Netlify Context
+
+Reference `.agents/netlify-*.md` files for Netlify best practices:
+- `netlify-serverless.md` - Serverless functions patterns
+- `netlify-edge-functions.md` - Edge functions patterns
+- `netlify-db.md` - Database patterns
+- `netlify-blobs.md` - Blob storage patterns
+- `netlify-env-variables.md` - Environment variable patterns
+
+**Key Netlify Rules:**
+- Use `Netlify.env.get()` for environment variables in functions (not `process.env`)
+- Use in-code `config.path` for function routing (not netlify.toml redirects)
+- Never add CORS headers unless explicitly requested
+- Use `npm run dev` for local development (enables Vite plugin emulation)
+
 ## Overview
 
 A work reporting application for:
@@ -71,10 +86,11 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 ## Authentication Model
 
-- Hidden route `/auth` for password entry
-- Authenticated = write/admin mode
-- Unauthenticated = read-only mode
-- Kudos section requires separate password (more restricted)
+- Hidden route `/admin` for admin password entry (not linked in nav)
+- `/kudos` page has inline login gate for kudos access
+- Admin = full write access to all features
+- Kudos = write access to kudos only
+- Unauthenticated = read-only mode (except kudos page requires auth)
 
 ## Linear Integration
 

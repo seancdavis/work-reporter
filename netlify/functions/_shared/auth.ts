@@ -1,5 +1,6 @@
 import { db, schema } from "./db";
-import { eq, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import type { Context } from "@netlify/functions";
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -9,9 +10,7 @@ function generateSessionId(): string {
   return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function createSession(
-  type: "admin" | "kudos"
-): Promise<string> {
+export async function createSession(type: "admin" | "kudos"): Promise<string> {
   const sessionId = generateSessionId();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
@@ -65,60 +64,41 @@ export async function deleteSession(sessionId: string): Promise<void> {
   await db.delete(schema.sessions).where(eq(schema.sessions.id, sessionId));
 }
 
-export function getSessionFromRequest(request: Request): string | null {
-  const cookieHeader = request.headers.get("cookie");
-  if (!cookieHeader) return null;
-
-  const cookies = cookieHeader.split(";").reduce(
-    (acc, cookie) => {
-      const [key, value] = cookie.trim().split("=");
-      acc[key] = value;
-      return acc;
-    },
-    {} as Record<string, string>
-  );
-
-  return cookies["session"] || null;
-}
-
-export function createSessionCookie(sessionId: string): string {
-  const expires = new Date(Date.now() + SESSION_DURATION_MS);
-  return `session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Expires=${expires.toUTCString()}`;
-}
-
-export function clearSessionCookie(): string {
-  return `session=; Path=/; HttpOnly; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-}
-
-export function verifyPassword(
-  password: string,
-  type: "admin" | "kudos"
-): boolean {
+export function verifyPassword(password: string, type: "admin" | "kudos"): boolean {
   const expectedPassword =
     type === "admin"
-      ? process.env.ADMIN_PASSWORD
-      : process.env.KUDOS_PASSWORD;
+      ? Netlify.env.get("ADMIN_PASSWORD")
+      : Netlify.env.get("KUDOS_PASSWORD");
 
   return password === expectedPassword;
 }
 
-// Helper to check auth and return appropriate response
-export async function requireAuth(
-  request: Request,
-  requiredType?: "admin" | "kudos"
-): Promise<{ authorized: boolean; response?: Response; sessionType?: string }> {
-  const sessionId = getSessionFromRequest(request);
-  const { valid, type } = await validateSession(sessionId, requiredType);
+// Helper to parse session from Cookie header
+export function parseSessionFromCookies(cookieHeader: string | null): string | undefined {
+  if (!cookieHeader) return undefined;
+  const cookies = Object.fromEntries(
+    cookieHeader.split(";").map((c) => {
+      const [key, ...val] = c.trim().split("=");
+      return [key, val.join("=")];
+    })
+  );
+  return cookies["session"];
+}
 
-  if (!valid) {
-    return {
-      authorized: false,
-      response: new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      }),
-    };
+// Helper to check auth using context.cookies or Cookie header fallback
+export async function requireAuth(
+  context: Context,
+  requiredType?: "admin" | "kudos",
+  req?: Request
+): Promise<{ authorized: boolean; type?: string }> {
+  // Try context.cookies first, then fall back to parsing Cookie header
+  let sessionId = context.cookies.get("session");
+
+  if (!sessionId && req) {
+    sessionId = parseSessionFromCookies(req.headers.get("Cookie"));
   }
 
-  return { authorized: true, sessionType: type };
+  const { valid, type } = await validateSession(sessionId || null, requiredType);
+
+  return { authorized: valid, type };
 }

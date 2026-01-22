@@ -1,17 +1,14 @@
-import type { Context } from "@netlify/functions";
+import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "./_shared/auth";
-import { jsonResponse, errorResponse, handleCors, corsHeaders, formatDate, getWeekStart, getWeekEnd } from "./_shared/utils";
+import { formatDate, getWeekEnd } from "./_shared/utils";
 
-export default async (request: Request, context: Context) => {
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
+export default async (req: Request, context: Context) => {
+  const url = new URL(req.url);
 
-  const url = new URL(request.url);
-
-  // GET /api/daily-standups - List standups (optionally filtered by date range)
-  if (request.method === "GET") {
+  // GET - List standups
+  if (req.method === "GET") {
     try {
       const dateParam = url.searchParams.get("date");
       const weekParam = url.searchParams.get("week");
@@ -19,14 +16,12 @@ export default async (request: Request, context: Context) => {
       let standups;
 
       if (dateParam) {
-        // Get specific date
         standups = await db
           .select()
           .from(schema.dailyStandups)
           .where(eq(schema.dailyStandups.date, dateParam))
           .orderBy(desc(schema.dailyStandups.date));
       } else if (weekParam) {
-        // Get standups for a specific week (weekParam is the week start date)
         const weekStart = new Date(weekParam + "T00:00:00");
         const weekEnd = getWeekEnd(weekStart);
         standups = await db
@@ -36,7 +31,6 @@ export default async (request: Request, context: Context) => {
           .where(lte(schema.dailyStandups.date, formatDate(weekEnd)))
           .orderBy(desc(schema.dailyStandups.date));
       } else {
-        // Get recent standups (last 14 days)
         const twoWeeksAgo = new Date();
         twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
         standups = await db
@@ -46,7 +40,6 @@ export default async (request: Request, context: Context) => {
           .orderBy(desc(schema.dailyStandups.date));
       }
 
-      // Convert to snake_case for API compatibility
       const result = standups.map((s) => ({
         id: s.id,
         date: s.date,
@@ -58,27 +51,23 @@ export default async (request: Request, context: Context) => {
         updated_at: s.updatedAt,
       }));
 
-      return jsonResponse(result, 200, corsHeaders());
+      return Response.json(result);
     } catch (error) {
       console.error("Error fetching daily standups:", error);
-      return errorResponse("Failed to fetch standups", 500);
+      return Response.json({ error: "Failed to fetch standups" }, { status: 500 });
     }
   }
 
-  // POST /api/daily-standups - Create or update a standup
-  if (request.method === "POST") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+  // POST - Create or update standup
+  if (req.method === "POST") {
+    const auth = await requireAuth(context, "admin", req);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
-      const body = await request.json();
-      const {
-        date,
-        yesterday_summary,
-        today_plan,
-        blockers,
-        linked_issues = [],
-      } = body as {
+      const body = await req.json();
+      const { date, yesterday_summary, today_plan, blockers, linked_issues = [] } = body as {
         date: string;
         yesterday_summary?: string;
         today_plan?: string;
@@ -87,10 +76,9 @@ export default async (request: Request, context: Context) => {
       };
 
       if (!date) {
-        return errorResponse("Date is required", 400);
+        return Response.json({ error: "Date is required" }, { status: 400 });
       }
 
-      // Check if standup exists for this date
       const existing = await db
         .select()
         .from(schema.dailyStandups)
@@ -99,7 +87,6 @@ export default async (request: Request, context: Context) => {
 
       let result;
       if (existing.length > 0) {
-        // Update
         const updated = await db
           .update(schema.dailyStandups)
           .set({
@@ -113,7 +100,6 @@ export default async (request: Request, context: Context) => {
           .returning();
         result = updated[0];
       } else {
-        // Insert
         const inserted = await db
           .insert(schema.dailyStandups)
           .values({
@@ -127,7 +113,7 @@ export default async (request: Request, context: Context) => {
         result = inserted[0];
       }
 
-      return jsonResponse({
+      return Response.json({
         id: result.id,
         date: result.date,
         yesterday_summary: result.yesterdaySummary,
@@ -136,34 +122,38 @@ export default async (request: Request, context: Context) => {
         linked_issues: result.linkedIssues,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
-      }, 200, corsHeaders());
+      });
     } catch (error) {
       console.error("Error saving daily standup:", error);
-      return errorResponse("Failed to save standup", 500);
+      return Response.json({ error: "Failed to save standup" }, { status: 500 });
     }
   }
 
-  // DELETE /api/daily-standups?date=YYYY-MM-DD
-  if (request.method === "DELETE") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+  // DELETE
+  if (req.method === "DELETE") {
+    const auth = await requireAuth(context, "admin", req);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const dateParam = url.searchParams.get("date");
       if (!dateParam) {
-        return errorResponse("Date parameter required", 400);
+        return Response.json({ error: "Date parameter required" }, { status: 400 });
       }
 
-      await db
-        .delete(schema.dailyStandups)
-        .where(eq(schema.dailyStandups.date, dateParam));
+      await db.delete(schema.dailyStandups).where(eq(schema.dailyStandups.date, dateParam));
 
-      return jsonResponse({ success: true }, 200, corsHeaders());
+      return Response.json({ success: true });
     } catch (error) {
       console.error("Error deleting daily standup:", error);
-      return errorResponse("Failed to delete standup", 500);
+      return Response.json({ error: "Failed to delete standup" }, { status: 500 });
     }
   }
 
-  return errorResponse("Method not allowed", 405);
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
+};
+
+export const config: Config = {
+  path: "/api/daily-standups",
 };

@@ -1,13 +1,10 @@
-import type { Context } from "@netlify/functions";
+import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, desc } from "drizzle-orm";
 import { requireAuth } from "./_shared/auth";
-import { jsonResponse, errorResponse, handleCors, corsHeaders, formatDate, getWeekStart } from "./_shared/utils";
+import { formatDate, getWeekStart } from "./_shared/utils";
 
 export default async (request: Request, context: Context) => {
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
-
   const url = new URL(request.url);
 
   // GET /api/weekly-standups - List weekly standups
@@ -45,17 +42,19 @@ export default async (request: Request, context: Context) => {
         updated_at: s.updatedAt,
       }));
 
-      return jsonResponse(result, 200, corsHeaders());
+      return Response.json(result);
     } catch (error) {
       console.error("Error fetching weekly standups:", error);
-      return errorResponse("Failed to fetch weekly standups", 500);
+      return Response.json({ error: "Failed to fetch weekly standups" }, { status: 500 });
     }
   }
 
   // POST /api/weekly-standups - Create or update a weekly standup
   if (request.method === "POST") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "admin", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const body = await request.json();
@@ -72,7 +71,7 @@ export default async (request: Request, context: Context) => {
       };
 
       if (!week_start) {
-        return errorResponse("week_start is required", 400);
+        return Response.json({ error: "week_start is required" }, { status: 400 });
       }
 
       // Check if standup exists for this week
@@ -110,7 +109,7 @@ export default async (request: Request, context: Context) => {
         result = inserted[0];
       }
 
-      return jsonResponse({
+      return Response.json({
         id: result.id,
         week_start: result.weekStart,
         planned_accomplishments: result.plannedAccomplishments,
@@ -118,34 +117,40 @@ export default async (request: Request, context: Context) => {
         linked_issues: result.linkedIssues,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
-      }, 200, corsHeaders());
+      });
     } catch (error) {
       console.error("Error saving weekly standup:", error);
-      return errorResponse("Failed to save weekly standup", 500);
+      return Response.json({ error: "Failed to save weekly standup" }, { status: 500 });
     }
   }
 
   // DELETE /api/weekly-standups?week=YYYY-MM-DD
   if (request.method === "DELETE") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "admin", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const weekParam = url.searchParams.get("week");
       if (!weekParam) {
-        return errorResponse("Week parameter required", 400);
+        return Response.json({ error: "Week parameter required" }, { status: 400 });
       }
 
       await db
         .delete(schema.weeklyStandups)
         .where(eq(schema.weeklyStandups.weekStart, weekParam));
 
-      return jsonResponse({ success: true }, 200, corsHeaders());
+      return Response.json({ success: true });
     } catch (error) {
       console.error("Error deleting weekly standup:", error);
-      return errorResponse("Failed to delete weekly standup", 500);
+      return Response.json({ error: "Failed to delete weekly standup" }, { status: 500 });
     }
   }
 
-  return errorResponse("Method not allowed", 405);
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
+};
+
+export const config: Config = {
+  path: "/api/weekly-standups",
 };

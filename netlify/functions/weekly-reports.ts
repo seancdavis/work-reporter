@@ -1,14 +1,11 @@
-import type { Context } from "@netlify/functions";
+import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, lte, asc, desc } from "drizzle-orm";
 import { requireAuth } from "./_shared/auth";
 import { generateWeeklySummary } from "./_shared/ai";
-import { jsonResponse, errorResponse, handleCors, corsHeaders, formatDate, getWeekStart, getWeekEnd } from "./_shared/utils";
+import { formatDate, getWeekStart, getWeekEnd } from "./_shared/utils";
 
 export default async (request: Request, context: Context) => {
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
-
   const url = new URL(request.url);
 
   // GET /api/weekly-reports - List weekly reports
@@ -46,24 +43,26 @@ export default async (request: Request, context: Context) => {
         updated_at: r.updatedAt,
       }));
 
-      return jsonResponse(result, 200, corsHeaders());
+      return Response.json(result);
     } catch (error) {
       console.error("Error fetching weekly reports:", error);
-      return errorResponse("Failed to fetch weekly reports", 500);
+      return Response.json({ error: "Failed to fetch weekly reports" }, { status: 500 });
     }
   }
 
   // POST /api/weekly-reports/generate - Generate AI summary for a week
   if (request.method === "POST" && url.pathname.endsWith("/generate")) {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "admin", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const body = await request.json();
       const { week_start } = body as { week_start: string };
 
       if (!week_start) {
-        return errorResponse("week_start is required", 400);
+        return Response.json({ error: "week_start is required" }, { status: 400 });
       }
 
       const weekStartDate = new Date(week_start + "T00:00:00");
@@ -84,7 +83,7 @@ export default async (request: Request, context: Context) => {
         .where(eq(schema.weeklyStandups.weekStart, week_start));
 
       if (dailyStandups.length === 0) {
-        return errorResponse("No daily standups found for this week", 400);
+        return Response.json({ error: "No daily standups found for this week" }, { status: 400 });
       }
 
       // Generate AI summary
@@ -139,7 +138,7 @@ export default async (request: Request, context: Context) => {
         result = inserted[0];
       }
 
-      return jsonResponse({
+      return Response.json({
         id: result.id,
         week_start: result.weekStart,
         ai_summary: result.aiSummary,
@@ -147,17 +146,19 @@ export default async (request: Request, context: Context) => {
         metrics: result.metrics,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
-      }, 200, corsHeaders());
+      });
     } catch (error) {
       console.error("Error generating weekly report:", error);
-      return errorResponse("Failed to generate weekly report", 500);
+      return Response.json({ error: "Failed to generate weekly report" }, { status: 500 });
     }
   }
 
   // POST /api/weekly-reports - Manually save/update a report
   if (request.method === "POST") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "admin", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const body = await request.json();
@@ -174,7 +175,7 @@ export default async (request: Request, context: Context) => {
       };
 
       if (!week_start) {
-        return errorResponse("week_start is required", 400);
+        return Response.json({ error: "week_start is required" }, { status: 400 });
       }
 
       // Check if report exists
@@ -212,7 +213,7 @@ export default async (request: Request, context: Context) => {
         result = inserted[0];
       }
 
-      return jsonResponse({
+      return Response.json({
         id: result.id,
         week_start: result.weekStart,
         ai_summary: result.aiSummary,
@@ -220,12 +221,16 @@ export default async (request: Request, context: Context) => {
         metrics: result.metrics,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
-      }, 200, corsHeaders());
+      });
     } catch (error) {
       console.error("Error saving weekly report:", error);
-      return errorResponse("Failed to save weekly report", 500);
+      return Response.json({ error: "Failed to save weekly report" }, { status: 500 });
     }
   }
 
-  return errorResponse("Method not allowed", 405);
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
+};
+
+export const config: Config = {
+  path: "/api/weekly-reports",
 };

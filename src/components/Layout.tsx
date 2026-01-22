@@ -40,28 +40,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </nav>
             </div>
-            <div className="flex items-center gap-4">
-              {status.authenticated ? (
-                <>
-                  <span className="text-sm text-gray-500">
-                    {status.type === "admin" ? "Admin" : "Kudos"}
-                  </span>
-                  <button
-                    onClick={logout}
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/auth"
+            {status.authenticated && status.type === "admin" && (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-500">Admin</span>
+                <button
+                  onClick={logout}
                   className="text-sm text-gray-600 hover:text-gray-900"
                 >
-                  Login
-                </Link>
-              )}
-            </div>
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

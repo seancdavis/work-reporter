@@ -1,8 +1,7 @@
-import type { Context } from "@netlify/functions";
+import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth } from "./_shared/auth";
-import { jsonResponse, errorResponse, handleCors, corsHeaders } from "./_shared/utils";
 
 // Valid columns for the kanban board
 const VALID_COLUMNS = ["backlog", "exploring", "deep_dive", "synthesizing", "parked"] as const;
@@ -13,9 +12,6 @@ function isValidColumn(column: string): column is Column {
 }
 
 export default async (request: Request, context: Context) => {
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
-
   const url = new URL(request.url);
 
   // GET /api/research - List all research items
@@ -40,17 +36,19 @@ export default async (request: Request, context: Context) => {
         updated_at: item.updatedAt,
       }));
 
-      return jsonResponse(result, 200, corsHeaders());
+      return Response.json(result);
     } catch (error) {
       console.error("Error fetching research items:", error);
-      return errorResponse("Failed to fetch research items", 500);
+      return Response.json({ error: "Failed to fetch research items" }, { status: 500 });
     }
   }
 
   // POST /api/research - Add a new research item (from Linear issue)
   if (request.method === "POST") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "admin", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const body = await request.json();
@@ -71,11 +69,11 @@ export default async (request: Request, context: Context) => {
       };
 
       if (!linear_issue_id || !linear_issue_identifier || !linear_issue_title || !linear_issue_url) {
-        return errorResponse("Linear issue details are required", 400);
+        return Response.json({ error: "Linear issue details are required" }, { status: 400 });
       }
 
       if (!isValidColumn(column)) {
-        return errorResponse(`Invalid column. Must be one of: ${VALID_COLUMNS.join(", ")}`, 400);
+        return Response.json({ error: `Invalid column. Must be one of: ${VALID_COLUMNS.join(", ")}` }, { status: 400 });
       }
 
       // Check if issue already exists on the board
@@ -86,7 +84,7 @@ export default async (request: Request, context: Context) => {
         .limit(1);
 
       if (existing.length > 0) {
-        return errorResponse("This issue is already on the research board", 400);
+        return Response.json({ error: "This issue is already on the research board" }, { status: 400 });
       }
 
       // Get max display order for the column
@@ -112,7 +110,7 @@ export default async (request: Request, context: Context) => {
 
       const result = inserted[0];
 
-      return jsonResponse({
+      return Response.json({
         id: result.id,
         linear_issue_id: result.linearIssueId,
         linear_issue_identifier: result.linearIssueIdentifier,
@@ -123,22 +121,24 @@ export default async (request: Request, context: Context) => {
         notes: result.notes,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
-      }, 201, corsHeaders());
+      }, { status: 201 });
     } catch (error) {
       console.error("Error creating research item:", error);
-      return errorResponse("Failed to create research item", 500);
+      return Response.json({ error: "Failed to create research item" }, { status: 500 });
     }
   }
 
   // PUT /api/research?id=X - Update a research item (move, reorder, add notes)
   if (request.method === "PUT") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "admin", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const idParam = url.searchParams.get("id");
       if (!idParam) {
-        return errorResponse("ID parameter required", 400);
+        return Response.json({ error: "ID parameter required" }, { status: 400 });
       }
 
       const body = await request.json();
@@ -149,7 +149,7 @@ export default async (request: Request, context: Context) => {
       };
 
       if (column !== undefined && !isValidColumn(column)) {
-        return errorResponse(`Invalid column. Must be one of: ${VALID_COLUMNS.join(", ")}`, 400);
+        return Response.json({ error: `Invalid column. Must be one of: ${VALID_COLUMNS.join(", ")}` }, { status: 400 });
       }
 
       const updateData: Record<string, unknown> = { updatedAt: new Date() };
@@ -164,12 +164,12 @@ export default async (request: Request, context: Context) => {
         .returning();
 
       if (updated.length === 0) {
-        return errorResponse("Research item not found", 404);
+        return Response.json({ error: "Research item not found" }, { status: 404 });
       }
 
       const result = updated[0];
 
-      return jsonResponse({
+      return Response.json({
         id: result.id,
         linear_issue_id: result.linearIssueId,
         linear_issue_identifier: result.linearIssueIdentifier,
@@ -180,17 +180,19 @@ export default async (request: Request, context: Context) => {
         notes: result.notes,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
-      }, 200, corsHeaders());
+      });
     } catch (error) {
       console.error("Error updating research item:", error);
-      return errorResponse("Failed to update research item", 500);
+      return Response.json({ error: "Failed to update research item" }, { status: 500 });
     }
   }
 
   // PATCH /api/research/reorder - Batch reorder items
   if (request.method === "PATCH") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "admin", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const body = await request.json();
@@ -199,13 +201,13 @@ export default async (request: Request, context: Context) => {
       };
 
       if (!items || !Array.isArray(items)) {
-        return errorResponse("Items array required", 400);
+        return Response.json({ error: "Items array required" }, { status: 400 });
       }
 
       // Update each item's position
       for (const item of items) {
         if (!isValidColumn(item.column)) {
-          return errorResponse(`Invalid column for item ${item.id}`, 400);
+          return Response.json({ error: `Invalid column for item ${item.id}` }, { status: 400 });
         }
 
         await db
@@ -218,34 +220,40 @@ export default async (request: Request, context: Context) => {
           .where(eq(schema.researchItems.id, item.id));
       }
 
-      return jsonResponse({ success: true }, 200, corsHeaders());
+      return Response.json({ success: true });
     } catch (error) {
       console.error("Error reordering research items:", error);
-      return errorResponse("Failed to reorder items", 500);
+      return Response.json({ error: "Failed to reorder items" }, { status: 500 });
     }
   }
 
   // DELETE /api/research?id=X - Remove item from board
   if (request.method === "DELETE") {
-    const auth = await requireAuth(request, "admin");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "admin", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const idParam = url.searchParams.get("id");
       if (!idParam) {
-        return errorResponse("ID parameter required", 400);
+        return Response.json({ error: "ID parameter required" }, { status: 400 });
       }
 
       await db
         .delete(schema.researchItems)
         .where(eq(schema.researchItems.id, parseInt(idParam)));
 
-      return jsonResponse({ success: true }, 200, corsHeaders());
+      return Response.json({ success: true });
     } catch (error) {
       console.error("Error deleting research item:", error);
-      return errorResponse("Failed to delete research item", 500);
+      return Response.json({ error: "Failed to delete research item" }, { status: 500 });
     }
   }
 
-  return errorResponse("Method not allowed", 405);
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
+};
+
+export const config: Config = {
+  path: "/api/research",
 };

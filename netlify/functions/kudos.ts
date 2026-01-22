@@ -1,14 +1,10 @@
-import type { Context } from "@netlify/functions";
+import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "./_shared/auth";
 import { uploadScreenshot, deleteScreenshot } from "./_shared/blobs";
-import { jsonResponse, errorResponse, handleCors, corsHeaders } from "./_shared/utils";
 
 export default async (request: Request, context: Context) => {
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
-
   const url = new URL(request.url);
 
   // GET /api/kudos - List kudos (read-only, no auth required)
@@ -36,17 +32,19 @@ export default async (request: Request, context: Context) => {
         updated_at: k.updatedAt,
       }));
 
-      return jsonResponse(result, 200, corsHeaders());
+      return Response.json(result);
     } catch (error) {
       console.error("Error fetching kudos:", error);
-      return errorResponse("Failed to fetch kudos", 500);
+      return Response.json({ error: "Failed to fetch kudos" }, { status: 500 });
     }
   }
 
   // POST /api/kudos - Create a new kudo (requires kudos auth)
   if (request.method === "POST") {
-    const auth = await requireAuth(request, "kudos");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "kudos", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const contentType = request.headers.get("content-type") || "";
@@ -89,9 +87,9 @@ export default async (request: Request, context: Context) => {
       const { received_date, sender_name, message, context, tags = [] } = kudoData;
 
       if (!received_date || !sender_name || !message) {
-        return errorResponse(
-          "received_date, sender_name, and message are required",
-          400
+        return Response.json(
+          { error: "received_date, sender_name, and message are required" },
+          { status: 400 }
         );
       }
 
@@ -109,7 +107,7 @@ export default async (request: Request, context: Context) => {
 
       const result = inserted[0];
 
-      return jsonResponse({
+      return Response.json({
         id: result.id,
         received_date: result.receivedDate,
         sender_name: result.senderName,
@@ -119,22 +117,24 @@ export default async (request: Request, context: Context) => {
         tags: result.tags,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
-      }, 201, corsHeaders());
+      }, { status: 201 });
     } catch (error) {
       console.error("Error creating kudo:", error);
-      return errorResponse("Failed to create kudo", 500);
+      return Response.json({ error: "Failed to create kudo" }, { status: 500 });
     }
   }
 
   // PUT /api/kudos/:id - Update a kudo
   if (request.method === "PUT") {
-    const auth = await requireAuth(request, "kudos");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "kudos", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const idParam = url.searchParams.get("id");
       if (!idParam) {
-        return errorResponse("ID parameter required", 400);
+        return Response.json({ error: "ID parameter required" }, { status: 400 });
       }
 
       const body = await request.json();
@@ -160,12 +160,12 @@ export default async (request: Request, context: Context) => {
         .returning();
 
       if (updated.length === 0) {
-        return errorResponse("Kudo not found", 404);
+        return Response.json({ error: "Kudo not found" }, { status: 404 });
       }
 
       const result = updated[0];
 
-      return jsonResponse({
+      return Response.json({
         id: result.id,
         received_date: result.receivedDate,
         sender_name: result.senderName,
@@ -175,22 +175,24 @@ export default async (request: Request, context: Context) => {
         tags: result.tags,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
-      }, 200, corsHeaders());
+      });
     } catch (error) {
       console.error("Error updating kudo:", error);
-      return errorResponse("Failed to update kudo", 500);
+      return Response.json({ error: "Failed to update kudo" }, { status: 500 });
     }
   }
 
   // DELETE /api/kudos?id=123
   if (request.method === "DELETE") {
-    const auth = await requireAuth(request, "kudos");
-    if (!auth.authorized) return auth.response!;
+    const auth = await requireAuth(context, "kudos", request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     try {
       const idParam = url.searchParams.get("id");
       if (!idParam) {
-        return errorResponse("ID parameter required", 400);
+        return Response.json({ error: "ID parameter required" }, { status: 400 });
       }
 
       // Get the kudo to check for screenshot
@@ -208,12 +210,16 @@ export default async (request: Request, context: Context) => {
         .delete(schema.kudos)
         .where(eq(schema.kudos.id, parseInt(idParam)));
 
-      return jsonResponse({ success: true }, 200, corsHeaders());
+      return Response.json({ success: true });
     } catch (error) {
       console.error("Error deleting kudo:", error);
-      return errorResponse("Failed to delete kudo", 500);
+      return Response.json({ error: "Failed to delete kudo" }, { status: 500 });
     }
   }
 
-  return errorResponse("Method not allowed", 405);
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
+};
+
+export const config: Config = {
+  path: "/api/kudos",
 };
