@@ -1,61 +1,28 @@
-// Netlify is a global object available in Netlify Functions
-declare const Netlify: {
-  env: {
-    get(key: string): string | undefined;
-  };
-};
+import Anthropic from "@anthropic-ai/sdk";
 
 const AI_MODEL = "claude-haiku-4-5-20251001";
 
-interface AIMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
 export async function generateAIResponse(
   systemPrompt: string,
-  userMessage: string
+  userMessage: string,
 ): Promise<string> {
-  // Use Netlify AI Gateway via ANTHROPIC_BASE_URL
-  const baseUrl = Netlify.env.get("ANTHROPIC_BASE_URL");
-  const apiKey = Netlify.env.get("ANTHROPIC_API_KEY");
-
-  if (!apiKey) {
-    console.error("ANTHROPIC_API_KEY not configured");
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("ANTHROPIC_API_KEY is not configured");
     return "";
   }
 
-  if (!baseUrl) {
-    console.error("ANTHROPIC_BASE_URL not configured");
-    return "";
-  }
-
-  // Construct the messages endpoint URL
-  const messagesUrl = `${baseUrl}/messages`;
+  const anthropic = new Anthropic();
 
   try {
-    const response = await fetch(messagesUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        max_tokens: 2048,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userMessage }],
-      }),
+    const message = await anthropic.messages.create({
+      model: AI_MODEL,
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
     });
 
-    if (!response.ok) {
-      console.error("AI API error:", response.status, await response.text());
-      return "";
-    }
-
-    const data = await response.json();
-    return data.content?.[0]?.text || "";
+    const content = message.content[0];
+    return content.type === "text" ? content.text : "";
   } catch (error) {
     console.error("Error calling AI API:", error);
     return "";
@@ -73,7 +40,7 @@ export async function generateWeeklySummary(
   weeklyPrediction?: {
     planned_accomplishments: string;
     goals: string[];
-  }
+  },
 ): Promise<{
   summary: string;
   highlights: string[];
@@ -93,7 +60,7 @@ ${dailyStandups
 - Today: ${d.today_plan || "N/A"}
 - Blockers: ${d.blockers || "None"}
 - Issues: ${d.linked_issues.map((i) => i.identifier).join(", ") || "None"}
-`
+`,
   )
   .join("\n")}
 
@@ -121,12 +88,11 @@ Format your response as JSON with this structure:
   const response = await generateAIResponse(systemPrompt, userMessage);
 
   try {
-    // Extract JSON from the response (in case there's extra text)
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       const uniqueIssues = new Set(
-        dailyStandups.flatMap((d) => d.linked_issues.map((i) => i.identifier))
+        dailyStandups.flatMap((d) => d.linked_issues.map((i) => i.identifier)),
       );
 
       return {
@@ -152,10 +118,7 @@ Format your response as JSON with this structure:
   };
 }
 
-export async function extractIssueReferences(
-  text: string
-): Promise<string[]> {
-  // Simple regex to find Linear-style issue identifiers (e.g., ENG-123, PROD-456)
+export async function extractIssueReferences(text: string): Promise<string[]> {
   const issuePattern = /\b([A-Z]{2,10}-\d+)\b/g;
   const matches = text.match(issuePattern) || [];
   return [...new Set(matches)];

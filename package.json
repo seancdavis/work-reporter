@@ -13,6 +13,7 @@
     "db:studio": "netlify dev:exec drizzle-kit studio"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@netlify/blobs": "^10.5.0",
     "@netlify/neon": "^0.1.2",
     "drizzle-orm": "^0.45.1",
