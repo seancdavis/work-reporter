@@ -1,0 +1,596 @@
+import { useState, useEffect, useRef } from "react";
+import { type ResearchItem, type LinearIssue, research, linear } from "../lib/api";
+import { cn, timeAgo } from "../lib/utils";
+import { MarkdownContent } from "./MarkdownContent";
+import { Button } from "./Button";
+
+interface ResearchModalProps {
+  item: ResearchItem;
+  isAdmin: boolean;
+  hideLinearBadge?: boolean;
+  onClose: () => void;
+  onUpdate: (updated: ResearchItem) => void;
+}
+
+export function ResearchModal({
+  item,
+  isAdmin,
+  hideLinearBadge,
+  onClose,
+  onUpdate,
+}: ResearchModalProps) {
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [titleValue, setTitleValue] = useState(item.title);
+  const [descriptionValue, setDescriptionValue] = useState(item.description || "");
+  const [addingNote, setAddingNote] = useState(false);
+  const [noteValue, setNoteValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showPlannedIssueSearch, setShowPlannedIssueSearch] = useState(false);
+  const [plannedIssueSearch, setPlannedIssueSearch] = useState("");
+  const [plannedIssueResults, setPlannedIssueResults] = useState<LinearIssue[]>([]);
+  const [searchingPlannedIssue, setSearchingPlannedIssue] = useState(false);
+
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isPrivate = item.linear_issue_identifier.startsWith("SCD-");
+  const showPlannedIssueSection = item.column === "planned" || item.column === "implemented";
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editingTitle]);
+
+  useEffect(() => {
+    if (editingDescription && descriptionTextareaRef.current) {
+      descriptionTextareaRef.current.focus();
+    }
+  }, [editingDescription]);
+
+  useEffect(() => {
+    if (addingNote && noteTextareaRef.current) {
+      noteTextareaRef.current.focus();
+    }
+  }, [addingNote]);
+
+  // Search for planned issue
+  useEffect(() => {
+    if (!plannedIssueSearch.trim()) {
+      setPlannedIssueResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchingPlannedIssue(true);
+      try {
+        const results = await linear.search(plannedIssueSearch);
+        setPlannedIssueResults(results);
+      } catch (error) {
+        console.error("Failed to search issues:", error);
+      } finally {
+        setSearchingPlannedIssue(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [plannedIssueSearch]);
+
+  // Close on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (editingTitle || editingDescription || addingNote || showPlannedIssueSearch) {
+          setEditingTitle(false);
+          setEditingDescription(false);
+          setAddingNote(false);
+          setShowPlannedIssueSearch(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose, editingTitle, editingDescription, addingNote, showPlannedIssueSearch]);
+
+  const handleSaveTitle = async () => {
+    if (!titleValue.trim()) return;
+    setSaving(true);
+    try {
+      const updated = await research.update(item.id, { title: titleValue.trim() });
+      onUpdate(updated);
+      setEditingTitle(false);
+    } catch (error) {
+      console.error("Failed to save title:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveDescription = async () => {
+    setSaving(true);
+    try {
+      const updated = await research.update(item.id, { description: descriptionValue });
+      onUpdate(updated);
+      setEditingDescription(false);
+    } catch (error) {
+      console.error("Failed to save description:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!noteValue.trim()) return;
+    setSaving(true);
+    try {
+      const newNote = await research.addNote(item.id, noteValue.trim());
+      onUpdate({
+        ...item,
+        notes: [...item.notes, newNote],
+      });
+      setNoteValue("");
+      setAddingNote(false);
+    } catch (error) {
+      console.error("Failed to add note:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: number) => {
+    if (!confirm("Delete this note?")) return;
+    try {
+      await research.deleteNote(item.id, noteId);
+      onUpdate({
+        ...item,
+        notes: item.notes.filter((n) => n.id !== noteId),
+      });
+    } catch (error) {
+      console.error("Failed to delete note:", error);
+    }
+  };
+
+  const handleSetPlannedIssue = async (issue: LinearIssue) => {
+    setSaving(true);
+    try {
+      const updated = await research.update(item.id, {
+        planned_issue_id: issue.id,
+        planned_issue_identifier: issue.identifier,
+        planned_issue_title: issue.title,
+        planned_issue_url: issue.url,
+      });
+      onUpdate(updated);
+      setShowPlannedIssueSearch(false);
+      setPlannedIssueSearch("");
+    } catch (error) {
+      console.error("Failed to set planned issue:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClearPlannedIssue = async () => {
+    setSaving(true);
+    try {
+      const updated = await research.update(item.id, {
+        planned_issue_id: null,
+        planned_issue_identifier: null,
+        planned_issue_title: null,
+        planned_issue_url: null,
+      });
+      onUpdate(updated);
+    } catch (error) {
+      console.error("Failed to clear planned issue:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Sort notes reverse chronological (newest first)
+  const sortedNotes = [...item.notes].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/60 transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Modal panel */}
+      <div className="flex min-h-full items-start justify-center p-4 sm:p-6">
+        <div
+          className="relative w-full max-w-3xl bg-white rounded-lg shadow-xl my-8"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-lg">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                {editingTitle && isAdmin ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      value={titleValue}
+                      onChange={(e) => setTitleValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveTitle();
+                        if (e.key === "Escape") {
+                          setTitleValue(item.title);
+                          setEditingTitle(false);
+                        }
+                      }}
+                      className="flex-1 text-xl font-semibold text-gray-900 px-2 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <Button size="sm" onClick={handleSaveTitle} loading={saving}>
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setTitleValue(item.title);
+                        setEditingTitle(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <h2
+                    className={cn(
+                      "text-xl font-semibold text-gray-900",
+                      isAdmin && "cursor-pointer hover:text-blue-600"
+                    )}
+                    onClick={() => isAdmin && setEditingTitle(true)}
+                  >
+                    {item.title}
+                  </h2>
+                )}
+
+                {/* Linear badge */}
+                {!hideLinearBadge && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <a
+                      href={item.linear_issue_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-sm rounded-md hover:bg-blue-100 transition-colors"
+                    >
+                      {isPrivate && (
+                        <svg
+                          className="w-3.5 h-3.5 text-gray-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          />
+                        </svg>
+                      )}
+                      <span className="font-medium">{item.linear_issue_identifier}</span>
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                    {item.linear_issue_title !== item.title && (
+                      <span className="text-sm text-gray-500 truncate">
+                        (Linear: {item.linear_issue_title})
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="px-6 py-4 space-y-6">
+            {/* Description */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-700">Description</h3>
+                {isAdmin && !editingDescription && (
+                  <button
+                    onClick={() => setEditingDescription(true)}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+
+              {editingDescription && isAdmin ? (
+                <div className="space-y-2">
+                  <textarea
+                    ref={descriptionTextareaRef}
+                    value={descriptionValue}
+                    onChange={(e) => setDescriptionValue(e.target.value)}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    placeholder="Add a description (supports markdown)..."
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSaveDescription} loading={saving}>
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setDescriptionValue(item.description || "");
+                        setEditingDescription(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : item.description_html ? (
+                <MarkdownContent
+                  html={item.description_html}
+                  className="text-sm text-gray-700"
+                />
+              ) : (
+                <p className="text-sm text-gray-400 italic">
+                  {isAdmin ? "Click Edit to add a description" : "No description"}
+                </p>
+              )}
+            </div>
+
+            {/* Planned Issue Section */}
+            {showPlannedIssueSection && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    {item.column === "implemented" ? "Implemented As" : "Planned Implementation"}
+                  </h3>
+                </div>
+
+                {item.planned_issue_id ? (
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={item.planned_issue_url!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 text-sm rounded-md hover:bg-green-100 transition-colors"
+                    >
+                      <span className="font-medium">{item.planned_issue_identifier}</span>
+                      <span className="text-green-600">{item.planned_issue_title}</span>
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                    {isAdmin && (
+                      <button
+                        onClick={handleClearPlannedIssue}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        title="Remove linked issue"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ) : isAdmin ? (
+                  <div className="relative">
+                    {showPlannedIssueSearch ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={plannedIssueSearch}
+                          onChange={(e) => setPlannedIssueSearch(e.target.value)}
+                          placeholder="Search for implementation issue..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          autoFocus
+                        />
+                        {searchingPlannedIssue ? (
+                          <div className="text-sm text-gray-500 py-2">Searching...</div>
+                        ) : plannedIssueResults.length > 0 ? (
+                          <div className="border border-gray-200 rounded-md max-h-48 overflow-auto">
+                            {plannedIssueResults.map((issue) => (
+                              <button
+                                key={issue.id}
+                                onClick={() => handleSetPlannedIssue(issue)}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                              >
+                                <span className="font-medium text-blue-600">
+                                  {issue.identifier}
+                                </span>
+                                <span className="ml-2 text-gray-700">{issue.title}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : plannedIssueSearch.trim() ? (
+                          <div className="text-sm text-gray-500 py-2">No issues found</div>
+                        ) : null}
+                        <button
+                          onClick={() => {
+                            setShowPlannedIssueSearch(false);
+                            setPlannedIssueSearch("");
+                          }}
+                          className="text-sm text-gray-500 hover:text-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowPlannedIssueSearch(true)}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        + Link implementation issue
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No implementation linked</p>
+                )}
+              </div>
+            )}
+
+            {/* Notes */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-700">
+                  Notes ({item.notes.length})
+                </h3>
+                {isAdmin && !addingNote && (
+                  <button
+                    onClick={() => setAddingNote(true)}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    + Add Note
+                  </button>
+                )}
+              </div>
+
+              {/* Add note form */}
+              {addingNote && isAdmin && (
+                <div className="mb-4 space-y-2">
+                  <textarea
+                    ref={noteTextareaRef}
+                    value={noteValue}
+                    onChange={(e) => setNoteValue(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    placeholder="Add a note (supports markdown)..."
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddNote} loading={saving}>
+                      Add Note
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setNoteValue("");
+                        setAddingNote(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes list */}
+              {sortedNotes.length > 0 ? (
+                <div className="space-y-3">
+                  {sortedNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="bg-gray-50 rounded-md p-3 relative group"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-500">
+                          {timeAgo(note.created_at)}
+                        </span>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete note"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      {note.content_html ? (
+                        <MarkdownContent
+                          html={note.content_html}
+                          className="text-sm text-gray-700"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {note.content}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic">
+                  {isAdmin ? "Click Add Note to start tracking your research" : "No notes yet"}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-gray-200 px-6 py-3 bg-gray-50 rounded-b-lg">
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>Created {timeAgo(item.created_at)}</span>
+              <span>Updated {timeAgo(item.updated_at)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

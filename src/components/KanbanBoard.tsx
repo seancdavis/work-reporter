@@ -5,29 +5,29 @@ import { cn } from "../lib/utils";
 interface KanbanBoardProps {
   items: ResearchItem[];
   onItemsChange: (items: ResearchItem[]) => void;
-  onItemUpdate: (id: number, data: { column?: ResearchColumn; notes?: string }) => Promise<void>;
+  onItemUpdate: (id: number, data: { column?: ResearchColumn }) => Promise<void>;
+  onItemClick: (item: ResearchItem) => void;
   onItemDelete: (id: number) => Promise<void>;
   isAdmin: boolean;
 }
 
 const COLUMNS: { key: ResearchColumn; label: string; color: string }[] = [
-  { key: "backlog", label: "Backlog", color: "bg-gray-100" },
+  { key: "ideas", label: "Ideas", color: "bg-gray-100" },
   { key: "exploring", label: "Exploring", color: "bg-blue-50" },
-  { key: "deep_dive", label: "Deep Dive", color: "bg-purple-50" },
-  { key: "synthesizing", label: "Synthesizing", color: "bg-amber-50" },
-  { key: "parked", label: "Parked", color: "bg-green-50" },
+  { key: "planned", label: "Planned", color: "bg-purple-50" },
+  { key: "implemented", label: "Implemented", color: "bg-green-50" },
+  { key: "closed", label: "Closed", color: "bg-amber-50" },
 ];
 
 export function KanbanBoard({
   items,
   onItemsChange,
   onItemUpdate,
+  onItemClick,
   onItemDelete,
   isAdmin,
 }: KanbanBoardProps) {
   const [draggingId, setDraggingId] = useState<number | null>(null);
-  const [editingNotes, setEditingNotes] = useState<number | null>(null);
-  const [notesValue, setNotesValue] = useState("");
 
   const getColumnItems = (column: ResearchColumn) =>
     items
@@ -82,20 +82,12 @@ export function KanbanBoard({
     setDraggingId(null);
   };
 
-  const startEditingNotes = (item: ResearchItem) => {
-    setEditingNotes(item.id);
-    setNotesValue(item.notes || "");
-  };
-
-  const saveNotes = async (itemId: number) => {
-    await onItemUpdate(itemId, { notes: notesValue });
-    setEditingNotes(null);
-    setNotesValue("");
-  };
-
-  const cancelEditingNotes = () => {
-    setEditingNotes(null);
-    setNotesValue("");
+  const handleCardClick = (e: React.MouseEvent, item: ResearchItem) => {
+    // Don't open modal if clicking on delete button or links
+    if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("a")) {
+      return;
+    }
+    onItemClick(item);
   };
 
   return (
@@ -118,88 +110,84 @@ export function KanbanBoard({
           </h3>
 
           <div className="space-y-2 min-h-[200px]">
-            {getColumnItems(column.key).map((item) => (
-              <div
-                key={item.id}
-                draggable={isAdmin}
-                onDragStart={(e) => handleDragStart(e, item.id)}
-                onDragEnd={handleDragEnd}
-                className={cn(
-                  "bg-white rounded-md p-3 shadow-sm border border-gray-200",
-                  isAdmin && "cursor-grab active:cursor-grabbing",
-                  draggingId === item.id && "opacity-50"
-                )}
-              >
-                <a
-                  href={item.linear_issue_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+            {getColumnItems(column.key).map((item) => {
+              const isPrivate = item.linear_issue_identifier.startsWith("SCD-");
+              return (
+                <div
+                  key={item.id}
+                  draggable={isAdmin}
+                  onDragStart={(e) => handleDragStart(e, item.id)}
+                  onDragEnd={handleDragEnd}
+                  onClick={(e) => handleCardClick(e, item)}
+                  className={cn(
+                    "bg-white rounded-md p-3 shadow-sm border border-gray-200 relative group",
+                    isAdmin && "cursor-grab active:cursor-grabbing",
+                    !isAdmin && "cursor-pointer hover:shadow-md transition-shadow",
+                    draggingId === item.id && "opacity-50"
+                  )}
                 >
-                  {item.linear_issue_identifier}
-                </a>
-                <p className="text-sm text-gray-700 mt-1 line-clamp-2">
-                  {item.linear_issue_title}
-                </p>
-
-                {/* Notes section */}
-                {editingNotes === item.id ? (
-                  <div className="mt-2">
-                    <textarea
-                      value={notesValue}
-                      onChange={(e) => setNotesValue(e.target.value)}
-                      className="w-full text-xs p-2 border border-gray-300 rounded resize-none"
-                      rows={2}
-                      placeholder="Add notes..."
-                      autoFocus
-                    />
-                    <div className="flex gap-1 mt-1">
-                      <button
-                        onClick={() => saveNotes(item.id)}
-                        className="text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={cancelEditingNotes}
-                        className="text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : item.notes ? (
-                  <p
-                    className={cn(
-                      "text-xs text-gray-500 mt-2 italic",
-                      isAdmin && "cursor-pointer hover:text-gray-700"
-                    )}
-                    onClick={() => isAdmin && startEditingNotes(item)}
-                  >
-                    {item.notes}
+                  {/* Title */}
+                  <p className="text-sm font-medium text-gray-900 line-clamp-2 hover:text-blue-600">
+                    {item.title}
                   </p>
-                ) : isAdmin ? (
-                  <button
-                    onClick={() => startEditingNotes(item)}
-                    className="text-xs text-gray-400 mt-2 hover:text-gray-600"
-                  >
-                    + Add notes
-                  </button>
-                ) : null}
 
-                {/* Delete button */}
-                {isAdmin && (
-                  <button
-                    onClick={() => onItemDelete(item.id)}
-                    className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            ))}
+                  {/* Description preview */}
+                  {item.description && (
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                      {item.description}
+                    </p>
+                  )}
+
+                  {/* Linear badge */}
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <a
+                      href={item.linear_issue_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      {isPrivate && (
+                        <svg
+                          className="w-3 h-3 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          />
+                        </svg>
+                      )}
+                      {item.linear_issue_identifier}
+                    </a>
+                    {item.notes.length > 0 && (
+                      <span className="text-xs text-gray-400">
+                        ({item.notes.length} note{item.notes.length !== 1 ? "s" : ""})
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Delete button */}
+                  {isAdmin && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onItemDelete(item.id);
+                      }}
+                      className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
 
             {getColumnItems(column.key).length === 0 && (
               <div className="text-sm text-gray-400 text-center py-8">

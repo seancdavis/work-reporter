@@ -21,6 +21,7 @@ export interface LinearIssue {
   id: string;
   identifier: string;
   title: string;
+  description: string | null;
   url: string;
   state: {
     name: string;
@@ -84,7 +85,15 @@ export interface AuthStatus {
   type: "admin" | "kudos" | null;
 }
 
-export type ResearchColumn = "backlog" | "exploring" | "deep_dive" | "synthesizing" | "parked";
+export type ResearchColumn = "ideas" | "exploring" | "planned" | "implemented" | "closed";
+
+export interface ResearchNote {
+  id: number;
+  research_item_id: number;
+  content: string;
+  content_html: string | null;
+  created_at: string;
+}
 
 export interface ResearchItem {
   id: number;
@@ -92,9 +101,16 @@ export interface ResearchItem {
   linear_issue_identifier: string;
   linear_issue_title: string;
   linear_issue_url: string;
+  title: string;
+  description: string | null;
+  description_html: string | null;
   column: ResearchColumn;
   display_order: number;
-  notes: string | null;
+  planned_issue_id: string | null;
+  planned_issue_identifier: string | null;
+  planned_issue_title: string | null;
+  planned_issue_url: string | null;
+  notes: ResearchNote[];
   created_at: string;
   updated_at: string;
 }
@@ -304,7 +320,9 @@ export const linear = {
 export const research = {
   list: () => fetchApi<ResearchItem[]>("/research"),
 
-  add: (issue: LinearIssue, column: ResearchColumn = "backlog", notes?: string) =>
+  get: (id: number) => fetchApi<ResearchItem>(`/research/${id}`),
+
+  add: (issue: LinearIssue, column: ResearchColumn = "ideas") =>
     fetchApi<ResearchItem>("/research", {
       method: "POST",
       body: JSON.stringify({
@@ -312,13 +330,22 @@ export const research = {
         linear_issue_identifier: issue.identifier,
         linear_issue_title: issue.title,
         linear_issue_url: issue.url,
+        linear_issue_description: issue.description,
         column,
-        notes,
       }),
     }),
 
-  update: (id: number, data: { column?: ResearchColumn; display_order?: number; notes?: string }) =>
-    fetchApi<ResearchItem>(`/research?id=${id}`, {
+  update: (id: number, data: {
+    column?: ResearchColumn;
+    display_order?: number;
+    title?: string;
+    description?: string;
+    planned_issue_id?: string | null;
+    planned_issue_identifier?: string | null;
+    planned_issue_title?: string | null;
+    planned_issue_url?: string | null;
+  }) =>
+    fetchApi<ResearchItem>(`/research/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
@@ -330,7 +357,18 @@ export const research = {
     }),
 
   delete: (id: number) =>
-    fetchApi<{ success: boolean }>(`/research?id=${id}`, {
+    fetchApi<{ success: boolean }>(`/research/${id}`, {
+      method: "DELETE",
+    }),
+
+  addNote: (itemId: number, content: string) =>
+    fetchApi<ResearchNote>(`/research/${itemId}/notes`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+
+  deleteNote: (itemId: number, noteId: number) =>
+    fetchApi<{ success: boolean }>(`/research/${itemId}/notes/${noteId}`, {
       method: "DELETE",
     }),
 };

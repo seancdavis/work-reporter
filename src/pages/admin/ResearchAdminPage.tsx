@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { research, linear, type ResearchItem, type ResearchColumn, type LinearIssue } from "../../lib/api";
 import { KanbanBoard } from "../../components/KanbanBoard";
+import { ResearchModal } from "../../components/ResearchModal";
 import { Button } from "../../components/Button";
+import { CardLoader } from "../../components/LoadingSpinner";
 import { cn } from "../../lib/utils";
 
 export function ResearchAdminPage() {
+  const { itemId } = useParams<{ itemId: string }>();
+  const navigate = useNavigate();
+
   const [items, setItems] = useState<ResearchItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -12,6 +18,7 @@ export function ResearchAdminPage() {
   const [searchResults, setSearchResults] = useState<LinearIssue[]>([]);
   const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<ResearchItem | null>(null);
 
   // Fetch research items
   useEffect(() => {
@@ -28,6 +35,21 @@ export function ResearchAdminPage() {
     }
     fetchItems();
   }, []);
+
+  // Open modal when itemId is in URL
+  useEffect(() => {
+    if (itemId && items.length > 0) {
+      const item = items.find((i) => i.id === parseInt(itemId));
+      if (item) {
+        setSelectedItem(item);
+      } else {
+        // Item not found, navigate back to research page
+        navigate("/admin/research", { replace: true });
+      }
+    } else if (!itemId) {
+      setSelectedItem(null);
+    }
+  }, [itemId, items, navigate]);
 
   // Search Linear issues
   useEffect(() => {
@@ -56,7 +78,7 @@ export function ResearchAdminPage() {
   const handleAddIssue = async (issue: LinearIssue) => {
     setAdding(true);
     try {
-      const newItem = await research.add(issue, "backlog");
+      const newItem = await research.add(issue, "ideas");
       setItems([...items, newItem]);
       setSearchQuery("");
       setSearchResults([]);
@@ -71,7 +93,7 @@ export function ResearchAdminPage() {
 
   const handleItemUpdate = async (
     id: number,
-    data: { column?: ResearchColumn; notes?: string }
+    data: { column?: ResearchColumn }
   ) => {
     try {
       const updated = await research.update(id, data);
@@ -82,19 +104,36 @@ export function ResearchAdminPage() {
     }
   };
 
+  const handleItemClick = (item: ResearchItem) => {
+    navigate(`/admin/research/${item.id}`);
+  };
+
+  const handleCloseModal = () => {
+    navigate("/admin/research");
+  };
+
+  const handleModalUpdate = (updated: ResearchItem) => {
+    setItems(items.map((i) => (i.id === updated.id ? updated : i)));
+    setSelectedItem(updated);
+  };
+
   const handleItemDelete = async (id: number) => {
     if (!confirm("Remove this item from the research board?")) return;
 
     try {
       await research.delete(id);
       setItems(items.filter((i) => i.id !== id));
+      // If viewing the deleted item, close modal
+      if (selectedItem?.id === id) {
+        navigate("/admin/research");
+      }
     } catch (error) {
       console.error("Failed to delete item:", error);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Research Board</h1>
@@ -106,12 +145,17 @@ export function ResearchAdminPage() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500 py-8 text-center">Loading...</div>
+        <div className="grid grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <CardLoader key={i} lines={4} />
+          ))}
+        </div>
       ) : (
         <KanbanBoard
           items={items}
           onItemsChange={setItems}
           onItemUpdate={handleItemUpdate}
+          onItemClick={handleItemClick}
           onItemDelete={handleItemDelete}
           isAdmin={true}
         />
@@ -203,6 +247,16 @@ export function ResearchAdminPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Research Item Modal */}
+      {selectedItem && (
+        <ResearchModal
+          item={selectedItem}
+          isAdmin={true}
+          onClose={handleCloseModal}
+          onUpdate={handleModalUpdate}
+        />
       )}
     </div>
   );

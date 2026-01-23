@@ -1,9 +1,10 @@
 const LINEAR_API_URL = "https://api.linear.app/graphql";
 
-interface LinearIssue {
+export interface LinearIssue {
   id: string;
   identifier: string;
   title: string;
+  description: string | null;
   url: string;
   state: {
     name: string;
@@ -53,6 +54,7 @@ export async function getActiveIssues(): Promise<LinearIssue[]> {
             id
             identifier
             title
+            description
             url
             state {
               name
@@ -113,6 +115,7 @@ export async function getIssuesByIds(issueIds: string[]): Promise<LinearIssue[]>
           id
           identifier
           title
+          description
           url
           state {
             name
@@ -184,6 +187,7 @@ export async function searchIssues(searchTerm: string): Promise<LinearIssue[]> {
             id
             identifier
             title
+            description
             url
             state {
               name
@@ -211,6 +215,7 @@ export async function searchIssues(searchTerm: string): Promise<LinearIssue[]> {
             id
             identifier
             title
+            description
             url
             state {
               name

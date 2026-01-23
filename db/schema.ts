@@ -59,9 +59,24 @@ export const researchItems = pgTable('research_items', {
   linearIssueIdentifier: text('linear_issue_identifier').notNull(), // e.g., "ENG-123"
   linearIssueTitle: text('linear_issue_title').notNull(),
   linearIssueUrl: text('linear_issue_url').notNull(),
-  column: text('column').notNull().default('backlog'), // backlog, exploring, deep_dive, synthesizing, parked
+  title: text('title').notNull(), // Editable title (initially from Linear)
+  description: text('description'), // Editable markdown description
+  descriptionHtml: text('description_html'), // Pre-rendered HTML
+  column: text('column').notNull().default('ideas'), // ideas, exploring, planned, implemented, closed
   displayOrder: integer('display_order').notNull().default(0),
-  notes: text('notes'),
+  plannedIssueId: text('planned_issue_id'), // Linear issue for implementation work
+  plannedIssueIdentifier: text('planned_issue_identifier'),
+  plannedIssueTitle: text('planned_issue_title'),
+  plannedIssueUrl: text('planned_issue_url'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Research item notes - timestamped notes for each research item
+export const researchNotes = pgTable('research_notes', {
+  id: serial('id').primaryKey(),
+  researchItemId: integer('research_item_id').notNull().references(() => researchItems.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  contentHtml: text('content_html'),
+  createdAt: timestamp('created_at').defaultNow(),
 });

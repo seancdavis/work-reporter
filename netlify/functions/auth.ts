@@ -13,7 +13,6 @@ export default async (req: Request): Promise<Response> => {
     const token = getTokenFromRequest(req);
 
     const { valid, type } = await validateSession(token);
-    console.log("[AUTH GET] Validation result:", { valid, type });
 
     return Response.json({ authenticated: valid, type: type || null });
   }
@@ -35,7 +34,6 @@ export default async (req: Request): Promise<Response> => {
       }
 
       const token = await createSession(type);
-      console.log("[AUTH POST] Session created:", token.substring(0, 8) + "...");
 
       // Return token in response body (stored in localStorage by frontend)
       return Response.json({ success: true, type, token });

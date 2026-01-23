@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { research, type ResearchItem, type ResearchColumn } from "../../lib/api";
-
-const COLUMNS: { id: ResearchColumn; label: string }[] = [
-  { id: "backlog", label: "Backlog" },
-  { id: "exploring", label: "Exploring" },
-  { id: "deep_dive", label: "Deep Dive" },
-  { id: "synthesizing", label: "Synthesizing" },
-  { id: "parked", label: "Parked" },
-];
+import { KanbanBoard } from "../../components/KanbanBoard";
+import { ResearchModal } from "../../components/ResearchModal";
+import { CardLoader } from "../../components/LoadingSpinner";
 
 export function ResearchPublicPage() {
+  const { itemId } = useParams<{ itemId: string }>();
+  const navigate = useNavigate();
+
   const [items, setItems] = useState<ResearchItem[]>([]);
+  const [allItems, setAllItems] = useState<ResearchItem[]>([]); // Includes private items for direct URL access
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<ResearchItem | null>(null);
 
   // Fetch research items
   useEffect(() => {
@@ -19,7 +20,9 @@ export function ResearchPublicPage() {
       setLoading(true);
       try {
         const data = await research.list();
-        setItems(data);
+        setAllItems(data);
+        // Filter out SCD- items for public board display
+        setItems(data.filter((item) => !item.linear_issue_identifier.startsWith("SCD-")));
       } catch (error) {
         console.error("Failed to fetch research items:", error);
       } finally {
@@ -29,74 +32,82 @@ export function ResearchPublicPage() {
     fetchItems();
   }, []);
 
-  const getColumnItems = (columnId: ResearchColumn) => {
-    return items.filter((item) => item.column === columnId);
+  // Open modal when itemId is in URL (allows direct link to private items)
+  useEffect(() => {
+    if (itemId && allItems.length > 0) {
+      const item = allItems.find((i) => i.id === parseInt(itemId));
+      if (item) {
+        setSelectedItem(item);
+      } else {
+        // Item not found, navigate back to research page
+        navigate("/research", { replace: true });
+      }
+    } else if (!itemId) {
+      setSelectedItem(null);
+    }
+  }, [itemId, allItems, navigate]);
+
+  const handleItemClick = (item: ResearchItem) => {
+    navigate(`/research/${item.id}`);
   };
 
+  const handleCloseModal = () => {
+    navigate("/research");
+  };
+
+  const handleItemUpdate = async (
+    _id: number,
+    _data: { column?: ResearchColumn }
+  ) => {
+    // No-op for public view
+  };
+
+  const handleItemDelete = async (_id: number) => {
+    // No-op for public view
+  };
+
+  // Check if selected item is private (SCD-) - hide Linear badge if so
+  const isSelectedItemPrivate = selectedItem?.linear_issue_identifier.startsWith("SCD-");
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Research Board</h1>
         <p className="text-gray-600 mt-1">
-          What I'm actively researching and thinking about.
+          What Sean is actively researching and thinking about.
         </p>
       </div>
 
       {loading ? (
-        <div className="text-gray-500 py-8 text-center">Loading...</div>
+        <div className="grid grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <CardLoader key={i} lines={4} />
+          ))}
+        </div>
       ) : items.length === 0 ? (
         <div className="text-gray-500 py-8 text-center">
           No research items yet.
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {COLUMNS.map((column) => {
-            const columnItems = getColumnItems(column.id);
-            return (
-              <div
-                key={column.id}
-                className="flex-shrink-0 w-64 bg-gray-100 rounded-lg p-3"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-gray-900 text-sm">
-                    {column.label}
-                  </h3>
-                  <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
-                    {columnItems.length}
-                  </span>
-                </div>
+        <KanbanBoard
+          items={items}
+          onItemsChange={() => {}} // No-op for public view
+          onItemUpdate={handleItemUpdate}
+          onItemClick={handleItemClick}
+          onItemDelete={handleItemDelete}
+          isAdmin={false}
+        />
+      )}
 
-                <div className="space-y-2">
-                  {columnItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-white rounded-md p-3 shadow-sm border border-gray-200"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-blue-600 text-sm">
-                          {item.linear_issue_identifier}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-700 line-clamp-2">
-                        {item.linear_issue_title}
-                      </p>
-                      {item.notes && (
-                        <p className="mt-2 text-xs text-gray-500 line-clamp-2 border-t border-gray-100 pt-2">
-                          {item.notes}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                  {columnItems.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-4">
-                      No items
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      {/* Research Item Modal */}
+      {selectedItem && (
+        <ResearchModal
+          item={selectedItem}
+          isAdmin={false}
+          hideLinearBadge={isSelectedItemPrivate}
+          onClose={handleCloseModal}
+          onUpdate={() => {}} // No-op for public view
+        />
       )}
     </div>
   );

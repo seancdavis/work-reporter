@@ -11,11 +11,15 @@ const navItems = [
 
 export function Layout() {
   const location = useLocation();
+  const isResearchPage = location.pathname.startsWith("/research");
 
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className={cn(
+          "mx-auto px-4 sm:px-6 lg:px-8",
+          isResearchPage ? "max-w-[1600px]" : "max-w-5xl"
+        )}>
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-8">
               <Link to="/" className="text-xl font-semibold text-gray-900">
@@ -41,7 +45,10 @@ export function Layout() {
           </div>
         </div>
       </header>
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className={cn(
+        "mx-auto px-4 sm:px-6 lg:px-8 py-8",
+        isResearchPage ? "max-w-[1600px]" : "max-w-5xl"
+      )}>
         <Outlet />
       </main>
     </div>

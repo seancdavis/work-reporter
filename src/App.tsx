@@ -32,6 +32,7 @@ function AppContent() {
             <Route path="/weekly" element={<WeeklyPublicPage />} />
             <Route path="/reports" element={<ReportsPublicPage />} />
             <Route path="/research" element={<ResearchPublicPage />} />
+            <Route path="/research/:itemId" element={<ResearchPublicPage />} />
             <Route path="/kudos" element={<KudosPublicPage />} />
           </Route>
 
@@ -44,6 +45,7 @@ function AppContent() {
             <Route path="/admin/weekly" element={<WeeklyAdminPage />} />
             <Route path="/admin/reports" element={<ReportsAdminPage />} />
             <Route path="/admin/research" element={<ResearchAdminPage />} />
+            <Route path="/admin/research/:itemId" element={<ResearchAdminPage />} />
             <Route path="/admin/kudos" element={<KudosAdminPage />} />
           </Route>
         </Routes>
