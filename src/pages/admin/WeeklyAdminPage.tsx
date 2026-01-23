@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react";
-import { weeklyStandups, type WeeklyStandup } from "../lib/api";
-import { useAuth } from "../hooks/useAuth";
-import { Button } from "../components/Button";
-import { TextArea } from "../components/TextArea";
-import { Input } from "../components/Input";
-import { IssueSelector } from "../components/IssueSelector";
-import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, cn } from "../lib/utils";
+import { weeklyStandups, type WeeklyStandup } from "../../lib/api";
+import { Button } from "../../components/Button";
+import { TextArea } from "../../components/TextArea";
+import { Input } from "../../components/Input";
+import { IssueSelector } from "../../components/IssueSelector";
+import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, cn } from "../../lib/utils";
 
-export function WeeklyPage() {
-  const { status } = useAuth();
-  const isAdmin = status.authenticated && status.type === "admin";
-
+export function WeeklyAdminPage() {
   const [standups, setStandups] = useState<WeeklyStandup[]>([]);
   const [, setLoading] = useState(true);
   const [selectedWeek, setSelectedWeek] = useState(formatDate(getWeekStart()));
@@ -163,7 +159,6 @@ export function WeeklyPage() {
                 onChange={(e) => setPlannedAccomplishments(e.target.value)}
                 placeholder="Describe your planned accomplishments..."
                 rows={4}
-                disabled={!isAdmin}
               />
 
               {/* Goals list */}
@@ -180,75 +175,62 @@ export function WeeklyPage() {
                         className="flex items-center gap-2 p-2 bg-gray-50 rounded-md"
                       >
                         <span className="flex-1 text-sm">{goal}</span>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => removeGoal(index)}
-                            className="text-gray-400 hover:text-red-500"
+                        <button
+                          type="button"
+                          onClick={() => removeGoal(index)}
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                        )}
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
                       </li>
                     ))}
                   </ul>
                 )}
 
-                {isAdmin && (
-                  <div className="flex gap-2">
-                    <Input
-                      value={newGoal}
-                      onChange={(e) => setNewGoal(e.target.value)}
-                      placeholder="Add a goal..."
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addGoal();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={addGoal}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                )}
+                <div className="flex gap-2">
+                  <Input
+                    value={newGoal}
+                    onChange={(e) => setNewGoal(e.target.value)}
+                    placeholder="Add a goal..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addGoal();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={addGoal}
+                  >
+                    Add
+                  </Button>
+                </div>
               </div>
 
               <IssueSelector
                 selectedIssues={linkedIssues}
                 onSelect={setLinkedIssues}
-                disabled={!isAdmin}
               />
 
-              {isAdmin && (
-                <div className="flex justify-end">
-                  <Button onClick={handleSave} loading={saving}>
-                    Save Weekly Standup
-                  </Button>
-                </div>
-              )}
-
-              {!isAdmin && (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  Login as admin to edit weekly standups
-                </p>
-              )}
+              <div className="flex justify-end">
+                <Button onClick={handleSave} loading={saving}>
+                  Save Weekly Standup
+                </Button>
+              </div>
             </div>
           </div>
         </div>

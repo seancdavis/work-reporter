@@ -19,7 +19,7 @@ export function AdminAuthPage() {
     try {
       const success = await login(password, "admin");
       if (success) {
-        navigate("/");
+        navigate("/admin/daily");
       } else {
         setError("Invalid password");
       }
@@ -40,7 +40,7 @@ export function AdminAuthPage() {
           You have full admin access to all features.
         </p>
         <div className="flex justify-center gap-4">
-          <Button onClick={() => navigate("/")}>Go to Dashboard</Button>
+          <Button onClick={() => navigate("/admin/daily")}>Go to Admin Dashboard</Button>
           <Button variant="secondary" onClick={logout}>
             Logout
           </Button>

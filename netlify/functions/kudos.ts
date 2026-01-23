@@ -39,9 +39,9 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // POST /api/kudos - Create a new kudo (requires kudos auth)
+  // POST /api/kudos - Create a new kudo (requires admin auth)
   if (request.method === "POST") {
-    const auth = await requireAuth(request, "kudos");
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -124,9 +124,9 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // PUT /api/kudos/:id - Update a kudo
+  // PUT /api/kudos/:id - Update a kudo (requires admin auth)
   if (request.method === "PUT") {
-    const auth = await requireAuth(request, "kudos");
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -182,9 +182,9 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // DELETE /api/kudos?id=123
+  // DELETE /api/kudos?id=123 (requires admin auth)
   if (request.method === "DELETE") {
-    const auth = await requireAuth(request, "kudos");
+    const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

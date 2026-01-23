@@ -1,14 +1,10 @@
 import { useState, useEffect } from "react";
-import { research, linear, type ResearchItem, type ResearchColumn, type LinearIssue } from "../lib/api";
-import { useAuth } from "../hooks/useAuth";
-import { KanbanBoard } from "../components/KanbanBoard";
-import { Button } from "../components/Button";
-import { cn } from "../lib/utils";
+import { research, linear, type ResearchItem, type ResearchColumn, type LinearIssue } from "../../lib/api";
+import { KanbanBoard } from "../../components/KanbanBoard";
+import { Button } from "../../components/Button";
+import { cn } from "../../lib/utils";
 
-export function ResearchPage() {
-  const { status } = useAuth();
-  const isAdmin = status.authenticated && status.type === "admin";
-
+export function ResearchAdminPage() {
   const [items, setItems] = useState<ResearchItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -103,12 +99,10 @@ export function ResearchPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Research Board</h1>
           <p className="text-gray-600 mt-1">
-            Track what I'm actively researching and thinking about.
+            Track what you're actively researching and thinking about.
           </p>
         </div>
-        {isAdmin && (
-          <Button onClick={() => setShowAddModal(true)}>Add Issue</Button>
-        )}
+        <Button onClick={() => setShowAddModal(true)}>Add Issue</Button>
       </div>
 
       {loading ? (
@@ -119,14 +113,8 @@ export function ResearchPage() {
           onItemsChange={setItems}
           onItemUpdate={handleItemUpdate}
           onItemDelete={handleItemDelete}
-          isAdmin={isAdmin}
+          isAdmin={true}
         />
-      )}
-
-      {!isAdmin && (
-        <p className="text-sm text-gray-500 text-center">
-          Login as admin to add and move items
-        </p>
       )}
 
       {/* Add Issue Modal */}

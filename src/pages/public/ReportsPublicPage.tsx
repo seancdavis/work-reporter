@@ -1,18 +1,12 @@
 import { useState, useEffect } from "react";
-import { weeklyReports, dailyStandups, type WeeklyReport, type DailyStandup } from "../lib/api";
-import { useAuth } from "../hooks/useAuth";
-import { Button } from "../components/Button";
-import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn } from "../lib/utils";
+import { weeklyReports, dailyStandups, type WeeklyReport, type DailyStandup } from "../../lib/api";
+import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn } from "../../lib/utils";
 
-export function ReportsPage() {
-  const { status } = useAuth();
-  const isAdmin = status.authenticated && status.type === "admin";
-
+export function ReportsPublicPage() {
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [dailyData, setDailyData] = useState<DailyStandup[]>([]);
   const [, setLoading] = useState(true);
   const [selectedWeek, setSelectedWeek] = useState(formatDate(getWeekStart()));
-  const [generating, setGenerating] = useState(false);
 
   // Fetch reports and daily standups
   useEffect(() => {
@@ -34,28 +28,6 @@ export function ReportsPage() {
     fetch();
   }, [selectedWeek]);
 
-  const handleGenerateReport = async () => {
-    setGenerating(true);
-    try {
-      const report = await weeklyReports.generate(selectedWeek);
-      setReports((prev) => {
-        const exists = prev.some((r) => r.week_start === selectedWeek);
-        if (exists) {
-          return prev.map((r) => (r.week_start === selectedWeek ? report : r));
-        }
-        return [report, ...prev].sort(
-          (a, b) =>
-            new Date(b.week_start).getTime() - new Date(a.week_start).getTime()
-        );
-      });
-    } catch (error) {
-      console.error("Failed to generate report:", error);
-      alert("Failed to generate report. Make sure you have daily standups for this week.");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   // Generate list of recent weeks
   const recentWeeks = Array.from({ length: 8 }, (_, i) => {
     const date = new Date();
@@ -70,7 +42,7 @@ export function ReportsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Weekly Reports</h1>
         <p className="text-gray-600 mt-1">
-          AI-generated summaries of your weekly accomplishments.
+          AI-generated summaries of weekly accomplishments.
         </p>
       </div>
 
@@ -147,26 +119,20 @@ export function ReportsPage() {
                     )}
                     {standup.linked_issues.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {standup.linked_issues.map((issue) => (
-                          <span
-                            key={issue.id}
-                            className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded"
-                          >
-                            {issue.identifier}
-                          </span>
-                        ))}
+                        {standup.linked_issues
+                          .filter((issue) => !issue.identifier.startsWith("SCD-"))
+                          .map((issue) => (
+                            <span
+                              key={issue.id}
+                              className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded"
+                            >
+                              {issue.identifier}
+                            </span>
+                          ))}
                       </div>
                     )}
                   </div>
                 ))}
-              </div>
-            )}
-
-            {isAdmin && dailyData.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <Button onClick={handleGenerateReport} loading={generating}>
-                  {currentReport ? "Regenerate AI Summary" : "Generate AI Summary"}
-                </Button>
               </div>
             )}
           </div>
@@ -244,6 +210,14 @@ export function ReportsPage() {
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+
+          {!currentReport && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+              <p className="text-gray-500 text-sm">
+                No AI summary generated for this week yet.
+              </p>
             </div>
           )}
         </div>

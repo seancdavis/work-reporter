@@ -1,20 +1,11 @@
 import { useState, useEffect } from "react";
-import { kudos as kudosApi, type Kudo } from "../lib/api";
-import { useAuth } from "../hooks/useAuth";
-import { Button } from "../components/Button";
-import { Input } from "../components/Input";
-import { TextArea } from "../components/TextArea";
-import { formatDate, formatDateDisplay } from "../lib/utils";
+import { kudos as kudosApi, type Kudo } from "../../lib/api";
+import { Button } from "../../components/Button";
+import { Input } from "../../components/Input";
+import { TextArea } from "../../components/TextArea";
+import { formatDate, formatDateDisplay } from "../../lib/utils";
 
-export function KudosPage() {
-  const { status, login } = useAuth();
-  const isAuthenticated = status.authenticated && (status.type === "admin" || status.type === "kudos");
-
-  // Login gate state
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const [loggingIn, setLoggingIn] = useState(false);
-
+export function KudosAdminPage() {
   const [kudosList, setKudosList] = useState<Kudo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -28,24 +19,6 @@ export function KudosPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
-
-  // Handle kudos login
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-    setLoggingIn(true);
-
-    try {
-      const success = await login(password, "kudos");
-      if (!success) {
-        setLoginError("Invalid password");
-      }
-    } catch (err) {
-      setLoginError("Login failed");
-    } finally {
-      setLoggingIn(false);
-    }
-  };
 
   // Fetch kudos
   useEffect(() => {
@@ -136,43 +109,13 @@ export function KudosPage() {
     .map(Number)
     .sort((a, b) => b - a);
 
-  // Login gate - require authentication to view kudos
-  if (!isAuthenticated) {
-    return (
-      <div className="max-w-md mx-auto mt-16">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Kudos</h1>
-          <p className="text-gray-600 mt-2">
-            Login to view and manage kudos.
-          </p>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-6">
-          <Input
-            type="password"
-            label="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter kudos password"
-            error={loginError}
-            autoFocus
-          />
-
-          <Button type="submit" loading={loggingIn} className="w-full">
-            Login
-          </Button>
-        </form>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Kudos</h1>
           <p className="text-gray-600 mt-1">
-            Recognition and positive feedback for promotion evidence.
+            Manage recognition and positive feedback for promotion evidence.
           </p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>

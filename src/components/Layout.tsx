@@ -1,5 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { cn } from "../lib/utils";
 
 const navItems = [
@@ -10,9 +9,8 @@ const navItems = [
   { path: "/kudos", label: "Kudos" },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout() {
   const location = useLocation();
-  const { status, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -40,22 +38,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </nav>
             </div>
-            {status.authenticated && status.type === "admin" && (
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-500">Admin</span>
-                <button
-                  onClick={logout}
-                  className="text-sm text-gray-600 hover:text-gray-900"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
+        <Outlet />
       </main>
     </div>
   );
