@@ -10,10 +10,10 @@ Reference `.agents/netlify-*.md` files for Netlify best practices:
 - `netlify-env-variables.md` - Environment variable patterns
 
 **Key Netlify Rules:**
-- Use `Netlify.env.get()` for environment variables in functions (not `process.env`)
 - Use in-code `config.path` for function routing (not netlify.toml redirects)
 - Never add CORS headers unless explicitly requested
 - Use `npm run dev` for local development (enables Vite plugin emulation)
+- For AI Gateway: use the official SDK (e.g., `@anthropic-ai/sdk`) - it auto-reads `process.env.ANTHROPIC_API_KEY` and `process.env.ANTHROPIC_BASE_URL`
 
 ## Overview
 
@@ -75,7 +75,7 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 ## Key Features (MVP)
 
-1. **Daily Standups** - Yesterday summary + today's plan
+1. **Daily Standups** - Yesterday summary + today's plan with AI cleanup and markdown rendering
 2. **Weekly Standup** (prediction) - What you plan to accomplish this week
 3. **Weekly Report** (summary) - AI-generated summary of what happened last week
 4. **Kudos Recording** - Text, sender, screenshot, context
@@ -83,6 +83,15 @@ npm run db:studio     # Open Drizzle Studio GUI
 6. **AI Processing** - Structure free-form input, link issues
 7. **Authentication** - Password-based admin mode vs read-only
 8. **Research Kanban Board** - Drag-and-drop board to track research items linked to Linear issues
+
+## Daily Standup Features
+
+- **Admin view**: Editable textareas with auto-expand, AI cleanup buttons
+- **Public view**: Rendered markdown (hidden when empty), filtered issues (SCD- prefix hidden)
+- **Markdown**: Raw text stored alongside pre-rendered HTML (generated on save via `marked`)
+- **AI Cleanup**: `/api/ai-cleanup` endpoint cleans up notes (fixes grammar, formats as lists, no headings)
+- **Privacy**: Issues with `SCD-` prefix are hidden in public view, shown with lock icon in admin
+- **Time display**: Uses relative time ("5 minutes ago") via `timeAgo()` utility
 
 ## Authentication Model
 

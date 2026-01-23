@@ -1,73 +1,45 @@
-# React + TypeScript + Vite
+# Work Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A work reporting application for daily/weekly standup reporting, recording kudos for promotion evidence, and providing visibility to stakeholders.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Frontend**: Vite + React + TypeScript
+- **Backend**: Netlify Functions
+- **Database**: Netlify DB (Neon/PostgreSQL) with Drizzle ORM
+- **Styling**: Tailwind CSS
+- **AI**: Netlify AI Gateway → Claude Haiku
+- **Image Storage**: Netlify Blobs
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Key Features
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Daily Standups** - Yesterday summary + today's plan with AI cleanup
+- **Weekly Standups** - Plan what you'll accomplish this week
+- **Weekly Reports** - AI-generated summaries of weekly work
+- **Kudos Recording** - Track recognition with screenshots
+- **Linear Integration** - Link issues to standups
+- **Research Kanban** - Drag-and-drop board for research tracking
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Database Commands
+
+```bash
+npm run db:generate   # Generate migrations from schema changes
+npm run db:migrate    # Apply migrations
+npm run db:studio     # Open Drizzle Studio GUI
 ```
+
+## Environment Variables
+
+Set via Netlify UI or CLI:
+
+- `LINEAR_API_KEY` - Linear API access
+- `ADMIN_PASSWORD` - Admin authentication
+- `KUDOS_PASSWORD` - Kudos-only authentication
+- `ANTHROPIC_API_KEY` / `ANTHROPIC_BASE_URL` - Auto-injected by Netlify AI Gateway
