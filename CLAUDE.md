@@ -67,10 +67,11 @@ ANTHROPIC_API_KEY=...  # For AI summaries (optional)
 
 Schema is defined in `db/schema.ts`. Migrations are in `migrations/`.
 
-**Database Commands (always use `netlify db` commands):**
+**Database Commands (always use npm scripts, not raw drizzle-kit):**
 ```bash
 npm run db:generate   # Generate migrations from schema changes
 npm run db:migrate    # Apply migrations (uses netlify dev:exec)
+npm run db:push       # Push schema directly (bypasses migrations)
 npm run db:studio     # Open Drizzle Studio GUI
 ```
 
@@ -103,8 +104,14 @@ npm run db:studio     # Open Drizzle Studio GUI
 - **Toast** (`Toast.tsx`) - Toast notification system with success/error variants, auto-dismiss after 4 seconds
 - **LoadingSpinner** (`LoadingSpinner.tsx`) - Loading states: `PageLoader`, `CardLoader`, `ContentLoader`
 - **AdminLayout** (`AdminLayout.tsx`) - Auth gate for admin routes with admin navigation header
+- **Layout** (`Layout.tsx`) - Public layout wrapper
 - **IssueSelector** (`IssueSelector.tsx`) - Linear issue search/select with `hideLabel` and `hideSelectedDisplay` props
 - **MarkdownContent** (`MarkdownContent.tsx`) - Renders pre-processed HTML with custom CSS styling (see `index.css`)
+- **ResearchModal** (`ResearchModal.tsx`) - Full-screen modal for research item details
+
+**Layout Widths:**
+- Header: Always 1600px max-width (consistent across all pages)
+- Main content: 1600px for research pages, 5xl (1024px) for other pages
 
 ## Authentication Model
 
@@ -128,20 +135,28 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 ## Research Kanban Board
 
-A drag-and-drop kanban board for tracking research topics linked to Linear issues.
+A drag-and-drop kanban board for tracking research topics linked to Linear issues. Uses a wider layout (1600px) to fit all columns.
 
 **Columns:**
-- Backlog - Issues to research later
+- Ideas - Starting point for new research topics
 - Exploring - Currently doing initial research
-- Deep Dive - In-depth investigation
-- Synthesizing - Pulling together findings
-- Parked - Research paused or deprioritized
+- Planned - Research has led to implementation work
+- Implemented - Work completed
+- Closed - Generic closed status
 
 **Features:**
-- Search and add Linear issues to the board
+- Search and add Linear issues to the board (pulls title and description from Linear)
+- Editable title and description (markdown) per research item
+- Timestamped notes system - add multiple notes to track research progress
+- Modal detail view with full editing capabilities
+- Planned issue linking - link implementation issues when status is planned/implemented
+- URL routing for deep links (`/research/:itemId`, `/admin/research/:itemId`)
 - Drag-and-drop to move between columns
-- Add notes to each research item
-- Links directly to Linear issues for full context
+- Privacy: SCD- items hidden from public view but accessible via direct URL (without Linear badge)
+
+**Key Components:**
+- `ResearchModal.tsx` - Full-screen modal for viewing/editing research items
+- `KanbanBoard.tsx` - Drag-and-drop board with column management
 
 ## Commands
 

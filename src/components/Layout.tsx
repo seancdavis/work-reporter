@@ -16,10 +16,7 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
-        <div className={cn(
-          "mx-auto px-4 sm:px-6 lg:px-8",
-          isResearchPage ? "max-w-[1600px]" : "max-w-5xl"
-        )}>
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-8">
               <Link to="/" className="text-xl font-semibold text-gray-900">
