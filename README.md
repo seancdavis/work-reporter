@@ -27,6 +27,29 @@ npm run dev
 - **Linear Integration** - Link issues to standups
 - **Research Kanban** - Drag-and-drop board for research tracking
 
+## Route Structure
+
+The app separates public (read-only) and admin (write) views:
+
+### Public Routes (no auth required)
+| Route | Purpose |
+|-------|---------|
+| `/` | View daily standups |
+| `/weekly` | View weekly standups |
+| `/reports` | View weekly reports |
+| `/research` | View research board |
+| `/kudos` | View kudos (requires kudos password) |
+
+### Admin Routes (auth required)
+| Route | Purpose |
+|-------|---------|
+| `/admin` | Login page |
+| `/admin/daily` | Edit daily standups |
+| `/admin/weekly` | Edit weekly standups |
+| `/admin/reports` | Generate AI summaries |
+| `/admin/research` | Manage research board |
+| `/admin/kudos` | Manage kudos |
+
 ## Database Commands
 
 ```bash

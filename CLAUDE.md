@@ -41,7 +41,10 @@ A work reporting application for:
 
 ```
 /src
-  /pages          # Route components
+  /pages
+    /public       # Read-only public pages (DailyPublicPage, WeeklyPublicPage, etc.)
+    /admin        # Admin pages with edit functionality (DailyAdminPage, etc.)
+    AdminAuthPage.tsx  # Login page at /admin
   /components     # Reusable UI components
   /lib            # API client, utilities
   /hooks          # React hooks
@@ -86,20 +89,37 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 ## Daily Standup Features
 
-- **Admin view**: Editable textareas with auto-expand, AI cleanup buttons
+- **Admin view**: Editable textareas with auto-expand, AI cleanup buttons, preview toggle
 - **Public view**: Rendered markdown (hidden when empty), filtered issues (SCD- prefix hidden)
 - **Markdown**: Raw text stored alongside pre-rendered HTML (generated on save via `marked`)
 - **AI Cleanup**: `/api/ai-cleanup` endpoint cleans up notes (fixes grammar, formats as lists, no headings)
 - **Privacy**: Issues with `SCD-` prefix are hidden in public view, shown with lock icon in admin
 - **Time display**: Uses relative time ("5 minutes ago") via `timeAgo()` utility
+- **Copy from yesterday**: Button to copy linked issues from previous day's standup
+- **Toast notifications**: Save feedback visible regardless of scroll position
+
+## Key UI Components
+
+- **Toast** (`Toast.tsx`) - Toast notification system with success/error variants, auto-dismiss after 4 seconds
+- **LoadingSpinner** (`LoadingSpinner.tsx`) - Loading states: `PageLoader`, `CardLoader`, `ContentLoader`
+- **AdminLayout** (`AdminLayout.tsx`) - Auth gate for admin routes with admin navigation header
+- **IssueSelector** (`IssueSelector.tsx`) - Linear issue search/select with `hideLabel` and `hideSelectedDisplay` props
+- **MarkdownContent** (`MarkdownContent.tsx`) - Renders pre-processed HTML with custom CSS styling (see `index.css`)
 
 ## Authentication Model
 
-- Hidden route `/admin` for admin password entry (not linked in nav)
-- `/kudos` page has inline login gate for kudos access
-- Admin = full write access to all features
-- Kudos = write access to kudos only
-- Unauthenticated = read-only mode (except kudos page requires auth)
+**Route Structure:**
+- Public routes (`/`, `/weekly`, `/reports`, `/research`) = read-only, no auth
+- Public kudos (`/kudos`) = read-only, requires kudos password
+- Admin routes (`/admin/*`) = full write access, requires admin password
+
+**Key Components:**
+- `AdminLayout` = auth gate wrapper for `/admin/*` routes, redirects to `/admin` if unauthenticated
+- `AdminAuthPage` = login page at `/admin`, redirects to `/admin/daily` on success
+
+**API Protection:**
+- All write endpoints require admin auth
+- Kudos write operations (POST/PUT/DELETE) require admin auth (not kudos password)
 
 ## Linear Integration
 
