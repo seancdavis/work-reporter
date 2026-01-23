@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { weeklyStandups, type WeeklyStandup } from "../../lib/api";
+import { MarkdownContent } from "../../components/MarkdownContent";
 import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, cn } from "../../lib/utils";
 
 export function WeeklyPublicPage() {
@@ -32,12 +33,29 @@ export function WeeklyPublicPage() {
 
   const currentStandup = standups.find((s) => s.week_start === selectedWeek);
 
+  // Filter linked issues for public view (hide SCD- prefixed issues)
+  const visibleLinkedIssues = currentStandup?.linked_issues?.filter(
+    (issue) => !issue.identifier.startsWith("SCD-")
+  ) || [];
+
+  // Section component for consistent styling
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        {title}
+      </h3>
+      <div className="pl-4 border-l-2 border-gray-200">
+        {children}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Weekly Standup</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Weekly Planning</h1>
         <p className="text-gray-600 mt-1">
-          What I plan to accomplish this week.
+          What Sean plans to accomplish this week.
         </p>
       </div>
 
@@ -90,58 +108,32 @@ export function WeeklyPublicPage() {
 
             {!currentStandup ? (
               <p className="text-gray-500 text-sm py-4">
-                No weekly standup recorded for this week.
+                No weekly planning recorded for this week.
               </p>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {/* Planned Accomplishments */}
-                {currentStandup.planned_accomplishments && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      What do you plan to accomplish this week?
-                    </label>
-                    <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-md p-3">
-                      {currentStandup.planned_accomplishments}
-                    </p>
-                  </div>
-                )}
-
-                {/* Goals */}
-                {currentStandup.goals && currentStandup.goals.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Goals
-                    </label>
-                    <ul className="space-y-2">
-                      {currentStandup.goals.map((goal, index) => (
-                        <li
-                          key={index}
-                          className="flex items-center gap-2 p-2 bg-gray-50 rounded-md"
-                        >
-                          <span className="flex-1 text-sm">{goal}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                {currentStandup.planned_accomplishments_html && (
+                  <Section title="What Sean plans to accomplish this week">
+                    <MarkdownContent html={currentStandup.planned_accomplishments_html} />
+                  </Section>
                 )}
 
                 {/* Linked Issues */}
-                {currentStandup.linked_issues && currentStandup.linked_issues.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Linked Issues
-                    </label>
+                {visibleLinkedIssues.length > 0 && (
+                  <Section title="Related issues">
                     <div className="flex flex-wrap gap-2">
-                      {currentStandup.linked_issues.map((issue) => (
-                        <span
+                      {visibleLinkedIssues.map((issue) => (
+                        <div
                           key={issue.id}
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm bg-blue-50 text-blue-700 border border-blue-100"
                         >
-                          {issue.identifier}
-                        </span>
+                          <span className="font-medium">{issue.identifier}</span>
+                          <span className="text-blue-600">{issue.title}</span>
+                        </div>
                       ))}
                     </div>
-                  </div>
+                  </Section>
                 )}
               </div>
             )}

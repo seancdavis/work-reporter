@@ -52,7 +52,7 @@ export interface WeeklyStandup {
   id: number;
   week_start: string;
   planned_accomplishments: string | null;
-  goals: string[];
+  planned_accomplishments_html: string | null;
   linked_issues: Array<{ id: string; identifier: string; title: string }>;
   created_at: string;
   updated_at: string;
@@ -193,7 +193,6 @@ export const weeklyStandups = {
   save: (data: {
     week_start: string;
     planned_accomplishments?: string;
-    goals?: string[];
     linked_issues?: Array<{ id: string; identifier: string; title: string }>;
   }) =>
     fetchApi<WeeklyStandup>("/weekly-standups", {

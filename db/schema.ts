@@ -18,7 +18,7 @@ export const weeklyStandups = pgTable('weekly_standups', {
   id: serial('id').primaryKey(),
   weekStart: date('week_start').notNull().unique(),
   plannedAccomplishments: text('planned_accomplishments'),
-  goals: jsonb('goals').default([]),
+  plannedAccomplishmentsHtml: text('planned_accomplishments_html'),
   linkedIssues: jsonb('linked_issues').default([]),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

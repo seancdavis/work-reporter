@@ -3,6 +3,7 @@ import { db, schema } from "./_shared/db";
 import { eq, gte, desc } from "drizzle-orm";
 import { requireAuth } from "./_shared/auth";
 import { formatDate, getWeekStart } from "./_shared/utils";
+import { parseMarkdown } from "./_shared/markdown";
 
 export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
@@ -36,7 +37,7 @@ export default async (request: Request, context: Context) => {
         id: s.id,
         week_start: s.weekStart,
         planned_accomplishments: s.plannedAccomplishments,
-        goals: s.goals,
+        planned_accomplishments_html: s.plannedAccomplishmentsHtml,
         linked_issues: s.linkedIssues,
         created_at: s.createdAt,
         updated_at: s.updatedAt,
@@ -61,18 +62,19 @@ export default async (request: Request, context: Context) => {
       const {
         week_start,
         planned_accomplishments,
-        goals = [],
         linked_issues = [],
       } = body as {
         week_start: string;
         planned_accomplishments?: string;
-        goals?: string[];
         linked_issues?: Array<{ id: string; identifier: string; title: string }>;
       };
 
       if (!week_start) {
         return Response.json({ error: "week_start is required" }, { status: 400 });
       }
+
+      // Parse markdown to HTML
+      const plannedAccomplishmentsHtml = parseMarkdown(planned_accomplishments);
 
       // Check if standup exists for this week
       const existing = await db
@@ -88,7 +90,7 @@ export default async (request: Request, context: Context) => {
           .update(schema.weeklyStandups)
           .set({
             plannedAccomplishments: planned_accomplishments || null,
-            goals: goals,
+            plannedAccomplishmentsHtml: plannedAccomplishmentsHtml,
             linkedIssues: linked_issues,
             updatedAt: new Date(),
           })
@@ -102,7 +104,7 @@ export default async (request: Request, context: Context) => {
           .values({
             weekStart: week_start,
             plannedAccomplishments: planned_accomplishments || null,
-            goals: goals,
+            plannedAccomplishmentsHtml: plannedAccomplishmentsHtml,
             linkedIssues: linked_issues,
           })
           .returning();
@@ -113,7 +115,7 @@ export default async (request: Request, context: Context) => {
         id: result.id,
         week_start: result.weekStart,
         planned_accomplishments: result.plannedAccomplishments,
-        goals: result.goals,
+        planned_accomplishments_html: result.plannedAccomplishmentsHtml,
         linked_issues: result.linkedIssues,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
