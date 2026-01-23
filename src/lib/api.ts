@@ -61,12 +61,8 @@ export interface WeeklyStandup {
 export interface WeeklyReport {
   id: number;
   week_start: string;
-  ai_summary: string | null;
-  highlights: string[];
-  metrics: {
-    issuesWorkedOn?: number;
-    daysReported?: number;
-  };
+  summary: string | null;
+  summary_html: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -214,16 +210,14 @@ export const weeklyReports = {
   },
 
   generate: (week_start: string) =>
-    fetchApi<WeeklyReport>("/weekly-reports/generate", {
+    fetchApi<{ generated: string }>("/weekly-reports/generate", {
       method: "POST",
       body: JSON.stringify({ week_start }),
     }),
 
   save: (data: {
     week_start: string;
-    ai_summary?: string;
-    highlights?: string[];
-    metrics?: Record<string, unknown>;
+    summary?: string;
   }) =>
     fetchApi<WeeklyReport>("/weekly-reports", {
       method: "POST",

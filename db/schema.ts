@@ -27,9 +27,8 @@ export const weeklyStandups = pgTable('weekly_standups', {
 export const weeklyReports = pgTable('weekly_reports', {
   id: serial('id').primaryKey(),
   weekStart: date('week_start').notNull().unique(),
-  aiSummary: text('ai_summary'),
-  highlights: jsonb('highlights').default([]),
-  metrics: jsonb('metrics').default({}),
+  summary: text('summary'),
+  summaryHtml: text('summary_html'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

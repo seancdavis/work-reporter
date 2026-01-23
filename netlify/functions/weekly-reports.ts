@@ -4,6 +4,7 @@ import { eq, gte, lte, asc, desc } from "drizzle-orm";
 import { requireAuth } from "./_shared/auth";
 import { generateWeeklySummary } from "./_shared/ai";
 import { formatDate, getWeekStart, getWeekEnd } from "./_shared/utils";
+import { parseMarkdown } from "./_shared/markdown";
 
 export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
@@ -36,9 +37,8 @@ export default async (request: Request, context: Context) => {
       const result = reports.map((r) => ({
         id: r.id,
         week_start: r.weekStart,
-        ai_summary: r.aiSummary,
-        highlights: r.highlights,
-        metrics: r.metrics,
+        summary: r.summary,
+        summary_html: r.summaryHtml,
         created_at: r.createdAt,
         updated_at: r.updatedAt,
       }));
@@ -50,7 +50,7 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // POST /api/weekly-reports/generate - Generate AI summary for a week
+  // POST /api/weekly-reports/generate - Generate AI summary (returns text, doesn't save)
   if (request.method === "POST" && url.pathname.endsWith("/generate")) {
     const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
@@ -76,7 +76,7 @@ export default async (request: Request, context: Context) => {
         .where(lte(schema.dailyStandups.date, formatDate(weekEndDate)))
         .orderBy(asc(schema.dailyStandups.date));
 
-      // Fetch weekly standup prediction
+      // Fetch weekly standup (planning)
       const weeklyStandups = await db
         .select()
         .from(schema.weeklyStandups)
@@ -87,7 +87,7 @@ export default async (request: Request, context: Context) => {
       }
 
       // Generate AI summary
-      const { summary, highlights, metrics } = await generateWeeklySummary(
+      const generated = await generateWeeklySummary(
         dailyStandups.map((d) => ({
           date: d.date,
           yesterday_summary: d.yesterdaySummary || "",
@@ -98,62 +98,18 @@ export default async (request: Request, context: Context) => {
         weeklyStandups[0]
           ? {
               planned_accomplishments: weeklyStandups[0].plannedAccomplishments || "",
-              goals: (weeklyStandups[0].goals as string[]) || [],
             }
           : undefined
       );
 
-      // Check if report exists
-      const existing = await db
-        .select()
-        .from(schema.weeklyReports)
-        .where(eq(schema.weeklyReports.weekStart, week_start))
-        .limit(1);
-
-      let result;
-      if (existing.length > 0) {
-        // Update
-        const updated = await db
-          .update(schema.weeklyReports)
-          .set({
-            aiSummary: summary,
-            highlights: highlights,
-            metrics: metrics,
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.weeklyReports.weekStart, week_start))
-          .returning();
-        result = updated[0];
-      } else {
-        // Insert
-        const inserted = await db
-          .insert(schema.weeklyReports)
-          .values({
-            weekStart: week_start,
-            aiSummary: summary,
-            highlights: highlights,
-            metrics: metrics,
-          })
-          .returning();
-        result = inserted[0];
-      }
-
-      return Response.json({
-        id: result.id,
-        week_start: result.weekStart,
-        ai_summary: result.aiSummary,
-        highlights: result.highlights,
-        metrics: result.metrics,
-        created_at: result.createdAt,
-        updated_at: result.updatedAt,
-      });
+      return Response.json({ generated });
     } catch (error) {
       console.error("Error generating weekly report:", error);
       return Response.json({ error: "Failed to generate weekly report" }, { status: 500 });
     }
   }
 
-  // POST /api/weekly-reports - Manually save/update a report
+  // POST /api/weekly-reports - Save/update a report
   if (request.method === "POST") {
     const auth = await requireAuth(request, "admin");
     if (!auth.authorized) {
@@ -162,21 +118,17 @@ export default async (request: Request, context: Context) => {
 
     try {
       const body = await request.json();
-      const {
-        week_start,
-        ai_summary,
-        highlights = [],
-        metrics = {},
-      } = body as {
+      const { week_start, summary } = body as {
         week_start: string;
-        ai_summary?: string;
-        highlights?: string[];
-        metrics?: Record<string, unknown>;
+        summary?: string;
       };
 
       if (!week_start) {
         return Response.json({ error: "week_start is required" }, { status: 400 });
       }
+
+      // Parse markdown to HTML
+      const summaryHtml = parseMarkdown(summary);
 
       // Check if report exists
       const existing = await db
@@ -191,9 +143,8 @@ export default async (request: Request, context: Context) => {
         const updated = await db
           .update(schema.weeklyReports)
           .set({
-            aiSummary: ai_summary || null,
-            highlights: highlights,
-            metrics: metrics,
+            summary: summary || null,
+            summaryHtml: summaryHtml,
             updatedAt: new Date(),
           })
           .where(eq(schema.weeklyReports.weekStart, week_start))
@@ -205,9 +156,8 @@ export default async (request: Request, context: Context) => {
           .insert(schema.weeklyReports)
           .values({
             weekStart: week_start,
-            aiSummary: ai_summary || null,
-            highlights: highlights,
-            metrics: metrics,
+            summary: summary || null,
+            summaryHtml: summaryHtml,
           })
           .returning();
         result = inserted[0];
@@ -216,9 +166,8 @@ export default async (request: Request, context: Context) => {
       return Response.json({
         id: result.id,
         week_start: result.weekStart,
-        ai_summary: result.aiSummary,
-        highlights: result.highlights,
-        metrics: result.metrics,
+        summary: result.summary,
+        summary_html: result.summaryHtml,
         created_at: result.createdAt,
         updated_at: result.updatedAt,
       });

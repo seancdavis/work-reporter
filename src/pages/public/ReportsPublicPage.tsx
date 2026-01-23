@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { weeklyReports, dailyStandups, type WeeklyReport, type DailyStandup } from "../../lib/api";
-import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn } from "../../lib/utils";
+import { MarkdownContent } from "../../components/MarkdownContent";
+import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn, timeAgo } from "../../lib/utils";
 
 export function ReportsPublicPage() {
   const [reports, setReports] = useState<WeeklyReport[]>([]);
@@ -37,12 +38,28 @@ export function ReportsPublicPage() {
 
   const currentReport = reports.find((r) => r.week_start === selectedWeek);
 
+  // Filter linked issues for public view (hide SCD- prefixed issues)
+  const filterIssues = (issues: Array<{ id: string; identifier: string; title: string }>) =>
+    issues.filter((issue) => !issue.identifier.startsWith("SCD-"));
+
+  // Section component for consistent styling
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        {title}
+      </h3>
+      <div className="pl-4 border-l-2 border-gray-200">
+        {children}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Weekly Reports</h1>
         <p className="text-gray-600 mt-1">
-          AI-generated summaries of weekly accomplishments.
+          Summaries of weekly accomplishments.
         </p>
       </div>
 
@@ -85,139 +102,77 @@ export function ReportsPublicPage() {
 
         {/* Main content */}
         <div className="lg:col-span-3 space-y-6">
-          {/* Daily standups summary */}
+          {/* Weekly Summary */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Daily Standups for {getWeekRange(new Date(selectedWeek + "T00:00:00"))}
-            </h2>
+            <div className="flex items-baseline justify-between mb-6">
+              <h2 className="text-lg font-medium text-gray-900">
+                {getRelativeWeekLabel(new Date(selectedWeek + "T00:00:00"))}
+              </h2>
+              {currentReport && (
+                <span className="text-sm text-gray-400">
+                  Updated {timeAgo(currentReport.updated_at)}
+                </span>
+              )}
+            </div>
 
-            {dailyData.length === 0 ? (
-              <p className="text-gray-500 text-sm">
-                No daily standups recorded for this week.
+            {!currentReport || !currentReport.summary_html ? (
+              <p className="text-gray-500 text-sm py-4">
+                No summary for this week yet.
               </p>
             ) : (
-              <div className="space-y-4">
-                {dailyData.map((standup) => (
-                  <div
-                    key={standup.date}
-                    className="border-l-2 border-gray-200 pl-4"
-                  >
-                    <h3 className="text-sm font-medium text-gray-900">
-                      {formatDateShort(standup.date)}
-                    </h3>
-                    {standup.yesterday_summary && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        <span className="font-medium">Yesterday:</span>{" "}
-                        {standup.yesterday_summary}
-                      </p>
-                    )}
-                    {standup.today_plan && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        <span className="font-medium">Today:</span>{" "}
-                        {standup.today_plan}
-                      </p>
-                    )}
-                    {standup.linked_issues.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {standup.linked_issues
-                          .filter((issue) => !issue.identifier.startsWith("SCD-"))
-                          .map((issue) => (
+              <Section title="Weekly Summary">
+                <MarkdownContent html={currentReport.summary_html} />
+              </Section>
+            )}
+          </div>
+
+          {/* Daily standups summary */}
+          {dailyData.length > 0 && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Daily Standups
+              </h2>
+
+              <div className="space-y-6">
+                {dailyData.map((standup) => {
+                  const visibleIssues = filterIssues(standup.linked_issues);
+                  return (
+                    <div
+                      key={standup.date}
+                      className="border-l-2 border-gray-200 pl-4"
+                    >
+                      <h3 className="text-sm font-medium text-gray-900 mb-2">
+                        {formatDateShort(standup.date)}
+                      </h3>
+
+                      {standup.yesterday_summary_html && (
+                        <div className="mb-2">
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            What was accomplished
+                          </span>
+                          <div className="mt-1 text-sm text-gray-700">
+                            <MarkdownContent html={standup.yesterday_summary_html} />
+                          </div>
+                        </div>
+                      )}
+
+                      {visibleIssues.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {visibleIssues.map((issue) => (
                             <span
                               key={issue.id}
                               className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded"
+                              title={issue.title}
                             >
                               {issue.identifier}
                             </span>
                           ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* AI Report */}
-          {currentReport && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">
-                  AI-Generated Summary
-                </h2>
-                <span className="text-xs text-gray-500">
-                  Generated:{" "}
-                  {new Date(currentReport.updated_at).toLocaleString()}
-                </span>
-              </div>
-
-              {/* Metrics */}
-              {currentReport.metrics && (
-                <div className="flex gap-6 mb-6">
-                  <div className="text-center">
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {currentReport.metrics.daysReported || 0}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-500">Days Reported</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {currentReport.metrics.issuesWorkedOn || 0}
-                    </div>
-                    <div className="text-xs text-gray-500">Issues Worked</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Summary */}
-              {currentReport.ai_summary && (
-                <div className="prose prose-sm max-w-none mb-6">
-                  <p className="text-gray-700 whitespace-pre-wrap">
-                    {currentReport.ai_summary}
-                  </p>
-                </div>
-              )}
-
-              {/* Highlights */}
-              {currentReport.highlights && currentReport.highlights.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">
-                    Key Highlights
-                  </h3>
-                  <ul className="space-y-2">
-                    {currentReport.highlights.map((highlight, index) => (
-                      <li
-                        key={index}
-                        className="flex items-start gap-2 text-sm text-gray-700"
-                      >
-                        <span className="text-green-500 mt-1">
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        </span>
-                        {highlight}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {!currentReport && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
-              <p className="text-gray-500 text-sm">
-                No AI summary generated for this week yet.
-              </p>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
