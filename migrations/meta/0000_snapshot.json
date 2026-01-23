@@ -1,5 +1,5 @@
 {
-  "id": "a47bbdeb-9290-469d-93aa-0f675eb3ac32",
+  "id": "d7b0784c-f69d-4013-90d7-6e0cf2e2b152",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -26,14 +26,32 @@
           "primaryKey": false,
           "notNull": false
         },
+        "yesterday_summary_html": {
+          "name": "yesterday_summary_html",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "today_plan": {
           "name": "today_plan",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
+        "today_plan_html": {
+          "name": "today_plan_html",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "blockers": {
           "name": "blockers",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blockers_html": {
+          "name": "blockers_html",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -146,6 +164,185 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.research_items": {
+      "name": "research_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "linear_issue_id": {
+          "name": "linear_issue_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "linear_issue_identifier": {
+          "name": "linear_issue_identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "linear_issue_title": {
+          "name": "linear_issue_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "linear_issue_url": {
+          "name": "linear_issue_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description_html": {
+          "name": "description_html",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "column": {
+          "name": "column",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ideas'"
+        },
+        "display_order": {
+          "name": "display_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "planned_issue_id": {
+          "name": "planned_issue_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_issue_identifier": {
+          "name": "planned_issue_identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_issue_title": {
+          "name": "planned_issue_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_issue_url": {
+          "name": "planned_issue_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "research_items_linear_issue_id_unique": {
+          "name": "research_items_linear_issue_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "linear_issue_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.research_notes": {
+      "name": "research_notes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "research_item_id": {
+          "name": "research_item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_html": {
+          "name": "content_html",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "research_notes_research_item_id_research_items_id_fk": {
+          "name": "research_notes_research_item_id_research_items_id_fk",
+          "tableFrom": "research_notes",
+          "tableTo": "research_items",
+          "columnsFrom": [
+            "research_item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.sessions": {
       "name": "sessions",
       "schema": "",
@@ -200,25 +397,17 @@
           "primaryKey": false,
           "notNull": true
         },
-        "ai_summary": {
-          "name": "ai_summary",
+        "summary": {
+          "name": "summary",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "highlights": {
-          "name": "highlights",
-          "type": "jsonb",
+        "summary_html": {
+          "name": "summary_html",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "default": "'[]'::jsonb"
-        },
-        "metrics": {
-          "name": "metrics",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'{}'::jsonb"
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -273,12 +462,11 @@
           "primaryKey": false,
           "notNull": false
         },
-        "goals": {
-          "name": "goals",
-          "type": "jsonb",
+        "planned_accomplishments_html": {
+          "name": "planned_accomplishments_html",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "default": "'[]'::jsonb"
+          "notNull": false
         },
         "linked_issues": {
           "name": "linked_issues",
