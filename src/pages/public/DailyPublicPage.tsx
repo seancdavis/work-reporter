@@ -25,12 +25,20 @@ export function DailyPublicPage() {
     fetch();
   }, []);
 
-  // Generate list of recent dates
-  const recentDates = Array.from({ length: 14 }, (_, i) => {
+  // Generate list of recent weekdays (Mon-Fri only)
+  const recentDates = (() => {
+    const dates: string[] = [];
     const date = new Date();
-    date.setDate(date.getDate() - i);
-    return formatDate(date);
-  });
+    while (dates.length < 14) {
+      const day = date.getDay();
+      // Only include weekdays (1-5 = Mon-Fri)
+      if (day >= 1 && day <= 5) {
+        dates.push(formatDate(date));
+      }
+      date.setDate(date.getDate() - 1);
+    }
+    return dates;
+  })();
 
   const currentStandup = standups.find((s) => s.date === selectedDate);
 

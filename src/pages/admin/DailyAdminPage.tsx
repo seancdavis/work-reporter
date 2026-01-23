@@ -107,11 +107,20 @@ export function DailyAdminPage() {
     });
   };
 
-  // Get yesterday's standup for copying issues
+  // Get the previous weekday (skips weekends)
+  const getPreviousWeekday = (dateStr: string): string => {
+    const date = new Date(dateStr + "T00:00:00");
+    date.setDate(date.getDate() - 1);
+    // Skip weekends (0 = Sunday, 6 = Saturday)
+    while (date.getDay() === 0 || date.getDay() === 6) {
+      date.setDate(date.getDate() - 1);
+    }
+    return formatDate(date);
+  };
+
+  // Get yesterday's standup for copying issues (uses previous weekday)
   const getYesterdayStandup = () => {
-    const yesterday = new Date(selectedDate + "T00:00:00");
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = formatDate(yesterday);
+    const yesterdayStr = getPreviousWeekday(selectedDate);
     return standups.find((s) => s.date === yesterdayStr);
   };
 
@@ -131,16 +140,31 @@ export function DailyAdminPage() {
     setLinkedIssues(linkedIssues.filter((i) => i.id !== issueId));
   };
 
-  // Generate list of recent dates
-  const recentDates = Array.from({ length: 14 }, (_, i) => {
+  // Generate list of recent weekdays (Mon-Fri only)
+  const recentDates = (() => {
+    const dates: string[] = [];
     const date = new Date();
-    date.setDate(date.getDate() - i);
-    return formatDate(date);
-  });
+    while (dates.length < 14) {
+      const day = date.getDay();
+      // Only include weekdays (1-5 = Mon-Fri)
+      if (day >= 1 && day <= 5) {
+        dates.push(formatDate(date));
+      }
+      date.setDate(date.getDate() - 1);
+    }
+    return dates;
+  })();
 
   const currentStandup = standups.find((s) => s.date === selectedDate);
   const yesterdayStandup = getYesterdayStandup();
   const hasYesterdayIssues = (yesterdayStandup?.linked_issues?.length ?? 0) > 0;
+  const hasYesterdayPlan = !!yesterdayStandup?.today_plan;
+
+  const copyPlanFromYesterday = () => {
+    if (yesterdayStandup?.today_plan) {
+      setYesterdaySummary(yesterdayStandup.today_plan);
+    }
+  };
 
   // Check if field has been saved (has HTML version)
   const hasSavedContent = (field: PreviewField) => {
@@ -218,6 +242,16 @@ export function DailyAdminPage() {
                     Preview
                   </>
                 )}
+              </button>
+            )}
+            {!isPreview && field === "yesterday_summary" && hasYesterdayPlan && (
+              <button
+                type="button"
+                onClick={copyPlanFromYesterday}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                <Copy className="w-3 h-3" />
+                Copy yesterday's plan
               </button>
             )}
             {!isPreview && (
