@@ -1,4 +1,9 @@
-import { Netlify } from "@netlify/functions";
+// Netlify is a global object available in Netlify Functions
+declare const Netlify: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 const AI_MODEL = "claude-haiku-4-5-20251001";
 

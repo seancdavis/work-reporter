@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, AlertCircle } from "lucide-react";
 import { ai } from "../lib/api";
 import { cn } from "../lib/utils";
 
@@ -12,20 +12,34 @@ interface AICleanupButtonProps {
 
 export function AICleanupButton({ field, content, onCleanup, disabled }: AICleanupButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleClick = async () => {
     if (!content.trim() || loading || disabled) return;
 
     setLoading(true);
+    setError(null);
     try {
       const result = await ai.cleanup(field, content);
       onCleanup(result.cleaned);
-    } catch (error) {
-      console.error("AI cleanup failed:", error);
+    } catch (err) {
+      console.error("AI cleanup failed:", err);
+      setError("AI cleanup failed");
+      // Clear error after 3 seconds
+      setTimeout(() => setError(null), 3000);
     } finally {
       setLoading(false);
     }
   };
+
+  if (error) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-600">
+        <AlertCircle className="w-3.5 h-3.5" />
+        {error}
+      </span>
+    );
+  }
 
   return (
     <button
