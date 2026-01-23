@@ -1,15 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
+import { PageLoader } from "../components/LoadingSpinner";
 
 export function AdminAuthPage() {
   const navigate = useNavigate();
-  const { login, status, logout } = useAuth();
+  const { login, status } = useAuth();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Auto-redirect if already authenticated as admin
+  useEffect(() => {
+    if (status.authenticated && status.type === "admin") {
+      navigate("/admin/daily", { replace: true });
+    }
+  }, [status, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,23 +38,9 @@ export function AdminAuthPage() {
     }
   };
 
+  // Show loading while redirecting
   if (status.authenticated && status.type === "admin") {
-    return (
-      <div className="max-w-md mx-auto mt-16 text-center">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-4">
-          Admin Access Active
-        </h1>
-        <p className="text-gray-600 mb-6">
-          You have full admin access to all features.
-        </p>
-        <div className="flex justify-center gap-4">
-          <Button onClick={() => navigate("/admin/daily")}>Go to Admin Dashboard</Button>
-          <Button variant="secondary" onClick={logout}>
-            Logout
-          </Button>
-        </div>
-      </div>
-    );
+    return <PageLoader message="Redirecting to admin..." />;
   }
 
   return (

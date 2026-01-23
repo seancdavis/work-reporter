@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { AdminLayout } from "./components/AdminLayout";
+import { PageLoader } from "./components/LoadingSpinner";
 import { AdminAuthPage } from "./pages/AdminAuthPage";
 import { DailyPublicPage } from "./pages/public/DailyPublicPage";
 import { WeeklyPublicPage } from "./pages/public/WeeklyPublicPage";
@@ -18,11 +19,7 @@ function AppContent() {
   const authValue = useAuthProvider();
 
   if (authValue.loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
-      </div>
-    );
+    return <PageLoader message="Loading Work Tracker..." />;
   }
 
   return (
