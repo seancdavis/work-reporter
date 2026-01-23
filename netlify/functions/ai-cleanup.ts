@@ -27,7 +27,8 @@ Your job is to:
 - Keep the content concise but complete
 - Preserve all technical details and issue references (like ENG-123)
 - Format as a clear list if multiple items
-- Use markdown formatting where appropriate (e.g., bullet points, code blocks)
+- Use markdown formatting where appropriate (e.g., bullet points, bold, code blocks)
+- Do NOT use headings (no # or ## etc) - the content will be displayed in a labeled section
 - Do NOT add any preamble or explanation - just return the cleaned up text
 - Keep the same general tone and voice`;
 
