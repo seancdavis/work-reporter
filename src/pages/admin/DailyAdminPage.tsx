@@ -348,6 +348,8 @@ export function DailyAdminPage() {
                   <IssueSelector
                     selectedIssues={linkedIssues}
                     onSelect={setLinkedIssues}
+                    hideLabel
+                    hideSelectedDisplay
                   />
 
                   {/* Display linked issues with titles */}

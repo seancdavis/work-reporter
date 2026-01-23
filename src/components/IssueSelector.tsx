@@ -7,9 +7,11 @@ interface IssueSelectorProps {
   selectedIssues: Array<{ id: string; identifier: string; title: string }>;
   onSelect: (issues: Array<{ id: string; identifier: string; title: string }>) => void;
   disabled?: boolean;
+  hideLabel?: boolean;
+  hideSelectedDisplay?: boolean;
 }
 
-export function IssueSelector({ selectedIssues, onSelect, disabled }: IssueSelectorProps) {
+export function IssueSelector({ selectedIssues, onSelect, disabled, hideLabel, hideSelectedDisplay }: IssueSelectorProps) {
   const { issues, loading, search } = useLinearIssues();
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -38,12 +40,14 @@ export function IssueSelector({ selectedIssues, onSelect, disabled }: IssueSelec
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        Linked Issues
-      </label>
+      {!hideLabel && (
+        <label className="block text-sm font-medium text-gray-700">
+          Linked Issues
+        </label>
+      )}
 
       {/* Selected issues */}
-      {selectedIssues.length > 0 && (
+      {!hideSelectedDisplay && selectedIssues.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selectedIssues.map((issue) => (
             <span

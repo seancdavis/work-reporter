@@ -39,12 +39,24 @@ export function DailyPublicPage() {
     (issue) => !issue.identifier.startsWith("SCD-")
   ) || [];
 
+  // Section component for consistent styling
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        {title}
+      </h3>
+      <div className="pl-4 border-l-2 border-gray-200">
+        {children}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Daily Standup</h1>
         <p className="text-gray-600 mt-1">
-          What I worked on yesterday and what I'm planning for today.
+          What Sean worked on and what's planned for today.
         </p>
       </div>
 
@@ -100,69 +112,59 @@ export function DailyPublicPage() {
             <CardLoader lines={4} />
           ) : (
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-1">
-                {formatDateDisplay(selectedDate)}
-              </h2>
-              {currentStandup && (
-                <p className="text-sm text-gray-500 mb-6">
-                  Last updated: {timeAgo(currentStandup.updated_at)}
-                </p>
-              )}
+              <div className="flex items-baseline justify-between mb-6">
+                <h2 className="text-lg font-medium text-gray-900">
+                  {formatDateDisplay(selectedDate)}
+                </h2>
+                {currentStandup && (
+                  <span className="text-sm text-gray-400">
+                    Updated {timeAgo(currentStandup.updated_at)}
+                  </span>
+                )}
+              </div>
 
               {!currentStandup ? (
                 <p className="text-gray-500 text-sm py-4">
                   No standup recorded for this date.
                 </p>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {/* Yesterday's Summary */}
                   {currentStandup.yesterday_summary_html && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        What did you accomplish yesterday?
-                      </label>
+                    <Section title="What Sean accomplished yesterday">
                       <MarkdownContent html={currentStandup.yesterday_summary_html} />
-                    </div>
+                    </Section>
                   )}
 
                   {/* Today's Plan */}
                   {currentStandup.today_plan_html && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        What are you planning for today?
-                      </label>
+                    <Section title="What Sean is working on today">
                       <MarkdownContent html={currentStandup.today_plan_html} />
-                    </div>
+                    </Section>
                   )}
 
                   {/* Blockers */}
                   {currentStandup.blockers_html && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Any blockers?
-                      </label>
+                    <Section title="Current blockers">
                       <MarkdownContent html={currentStandup.blockers_html} />
-                    </div>
+                    </Section>
                   )}
 
                   {/* Linked Issues */}
                   {visibleLinkedIssues.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Linked Issues
-                      </label>
+                    <Section title="Related issues">
                       <div className="flex flex-wrap gap-2">
                         {visibleLinkedIssues.map((issue) => (
                           <div
                             key={issue.id}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm bg-blue-50 text-blue-700 border border-blue-100"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm bg-blue-50 text-blue-700 border border-blue-100"
                           >
                             <span className="font-medium">{issue.identifier}</span>
                             <span className="text-blue-600">{issue.title}</span>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </Section>
                   )}
                 </div>
               )}

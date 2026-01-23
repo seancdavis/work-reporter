@@ -21,7 +21,7 @@
 
 /* Paragraphs */
 .markdown-content p {
-  margin: 0.5em 0;
+  margin: 0.75em 0;
 }
 
 .markdown-content p:first-child {
@@ -30,6 +30,18 @@
 
 .markdown-content p:last-child {
   margin-bottom: 0;
+}
+
+/* Paragraphs after lists need more space */
+.markdown-content ul + p,
+.markdown-content ol + p {
+  margin-top: 1em;
+}
+
+/* Lists after paragraphs need more space */
+.markdown-content p + ul,
+.markdown-content p + ol {
+  margin-top: 0.75em;
 }
 
 /* Headings */
@@ -63,10 +75,22 @@
   list-style: none;
 }
 
+/* First list item doesn't need top margin */
+.markdown-content ul > li:first-child,
+.markdown-content ol > li:first-child {
+  margin-top: 0;
+}
+
+/* Last list item doesn't need bottom margin */
+.markdown-content ul > li:last-child,
+.markdown-content ol > li:last-child {
+  margin-bottom: 0;
+}
+
 .markdown-content li {
   position: relative;
   padding-left: 1.5em;
-  margin: 0.35em 0;
+  margin: 0.15em 0;
 }
 
 /* Unordered list bullets - clean dash style */
