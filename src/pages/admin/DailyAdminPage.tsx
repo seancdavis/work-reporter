@@ -7,6 +7,7 @@ import { IssueSelector } from "../../components/IssueSelector";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { AICleanupButton } from "../../components/AICleanupButton";
 import { CardLoader } from "../../components/LoadingSpinner";
+import { useToast, ToastContainer } from "../../components/Toast";
 import { formatDate, formatDateDisplay, formatDateShort, timeAgo, cn } from "../../lib/utils";
 
 type PreviewField = "yesterday_summary" | "today_plan" | "blockers";
@@ -16,6 +17,7 @@ export function DailyAdminPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
   const [saving, setSaving] = useState(false);
+  const { toasts, showToast, dismissToast } = useToast();
 
   // Preview mode for each field (only available for saved content)
   const [previewFields, setPreviewFields] = useState<Set<PreviewField>>(new Set());
@@ -83,8 +85,11 @@ export function DailyAdminPage() {
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
       });
+
+      showToast("success", "Standup saved successfully");
     } catch (error) {
       console.error("Failed to save standup:", error);
+      showToast("error", "Failed to save standup. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -162,6 +167,17 @@ export function DailyAdminPage() {
     }
   };
 
+  const getPreviewLabel = (field: PreviewField) => {
+    switch (field) {
+      case "yesterday_summary":
+        return "What Sean accomplished yesterday";
+      case "today_plan":
+        return "What Sean is working on today";
+      case "blockers":
+        return "Current blockers";
+    }
+  };
+
   const renderFieldWithPreview = (
     field: PreviewField,
     label: string,
@@ -214,7 +230,14 @@ export function DailyAdminPage() {
           </div>
         </div>
         {isPreview ? (
-          <MarkdownContent html={getSavedHtml(field)} />
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {getPreviewLabel(field)}
+            </h3>
+            <div className="pl-4 border-l-2 border-gray-200">
+              <MarkdownContent html={getSavedHtml(field)} />
+            </div>
+          </div>
         ) : (
           <TextArea
             value={value}
@@ -228,187 +251,191 @@ export function DailyAdminPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Daily Standup</h1>
-        <p className="text-gray-600 mt-1">
-          Record what you worked on yesterday and what you're planning for today.
-        </p>
-      </div>
+    <>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Daily Standup</h1>
+          <p className="text-gray-600 mt-1">
+            Record what you worked on yesterday and what you're planning for today.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Date selector sidebar */}
-        <div className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-gray-700 mb-3">Select Date</h2>
-          <div className="space-y-1">
-            {loading ? (
-              Array.from({ length: 7 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-full px-3 py-2 rounded-md animate-pulse"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="h-4 bg-gray-200 rounded w-24" />
-                    <div className="w-2 h-2 bg-gray-200 rounded-full" />
-                  </div>
-                </div>
-              ))
-            ) : (
-              recentDates.map((date) => {
-                const hasStandup = standups.some((s) => s.date === date);
-                return (
-                  <button
-                    key={date}
-                    onClick={() => setSelectedDate(date)}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
-                      selectedDate === date
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : "text-gray-700 hover:bg-gray-50",
-                      hasStandup && selectedDate !== date && "text-gray-900"
-                    )}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Date selector sidebar */}
+          <div className="lg:col-span-1">
+            <h2 className="text-sm font-medium text-gray-700 mb-3">Select Date</h2>
+            <div className="space-y-1">
+              {loading ? (
+                Array.from({ length: 7 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-full px-3 py-2 rounded-md animate-pulse"
                   >
                     <div className="flex items-center justify-between">
-                      <span>{formatDateShort(date)}</span>
-                      {hasStandup && (
-                        <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      <div className="h-4 bg-gray-200 rounded w-24" />
+                      <div className="w-2 h-2 bg-gray-200 rounded-full" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                recentDates.map((date) => {
+                  const hasStandup = standups.some((s) => s.date === date);
+                  return (
+                    <button
+                      key={date}
+                      onClick={() => setSelectedDate(date)}
+                      className={cn(
+                        "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
+                        selectedDate === date
+                          ? "bg-blue-50 text-blue-700 font-medium"
+                          : "text-gray-700 hover:bg-gray-50",
+                        hasStandup && selectedDate !== date && "text-gray-900"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{formatDateShort(date)}</span>
+                        {hasStandup && (
+                          <span className="w-2 h-2 bg-green-500 rounded-full" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Main form */}
+          <div className="lg:col-span-3 space-y-6">
+            {loading ? (
+              <CardLoader lines={4} />
+            ) : (
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-1">
+                  {formatDateDisplay(selectedDate)}
+                </h2>
+                {currentStandup && (
+                  <p className="text-sm text-gray-500 mb-6">
+                    Last updated: {timeAgo(currentStandup.updated_at)}
+                  </p>
+                )}
+
+                <div className="space-y-6">
+                  {/* Yesterday's Summary */}
+                  {renderFieldWithPreview(
+                    "yesterday_summary",
+                    "What did you accomplish yesterday?",
+                    yesterdaySummary,
+                    setYesterdaySummary,
+                    "Describe what you completed...",
+                    3
+                  )}
+
+                  {/* Today's Plan */}
+                  {renderFieldWithPreview(
+                    "today_plan",
+                    "What are you planning for today?",
+                    todayPlan,
+                    setTodayPlan,
+                    "List your goals for today...",
+                    3
+                  )}
+
+                  {/* Blockers */}
+                  {renderFieldWithPreview(
+                    "blockers",
+                    "Any blockers?",
+                    blockers,
+                    setBlockers,
+                    "Describe any blockers or issues...",
+                    2
+                  )}
+
+                  {/* Linked Issues */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Linked Issues
+                      </label>
+                      {hasYesterdayIssues && (
+                        <button
+                          type="button"
+                          onClick={copyIssuesFromYesterday}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                        >
+                          <Copy className="w-3 h-3" />
+                          Copy from yesterday
+                        </button>
                       )}
                     </div>
-                  </button>
-                );
-              })
+
+                    <IssueSelector
+                      selectedIssues={linkedIssues}
+                      onSelect={setLinkedIssues}
+                      hideLabel
+                      hideSelectedDisplay
+                    />
+
+                    {/* Display linked issues with titles */}
+                    {linkedIssues.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {linkedIssues.map((issue) => (
+                          <div
+                            key={issue.id}
+                            className={cn(
+                              "flex items-center justify-between gap-2 px-3 py-2 rounded-md border",
+                              issue.identifier.startsWith("SCD-")
+                                ? "bg-gray-50 border-gray-200"
+                                : "bg-blue-50 border-blue-100"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={cn(
+                                "font-medium text-sm whitespace-nowrap",
+                                issue.identifier.startsWith("SCD-")
+                                  ? "text-gray-700"
+                                  : "text-blue-700"
+                              )}>
+                                {issue.identifier}
+                              </span>
+                              {issue.identifier.startsWith("SCD-") && (
+                                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                              )}
+                              <span className={cn(
+                                "text-sm truncate",
+                                issue.identifier.startsWith("SCD-")
+                                  ? "text-gray-600"
+                                  : "text-blue-600"
+                              )}>
+                                {issue.title}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeIssue(issue.id)}
+                              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleSave} loading={saving}>
+                      Save Standup
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Main form */}
-        <div className="lg:col-span-3 space-y-6">
-          {loading ? (
-            <CardLoader lines={4} />
-          ) : (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-1">
-                {formatDateDisplay(selectedDate)}
-              </h2>
-              {currentStandup && (
-                <p className="text-sm text-gray-500 mb-6">
-                  Last updated: {timeAgo(currentStandup.updated_at)}
-                </p>
-              )}
-
-              <div className="space-y-6">
-                {/* Yesterday's Summary */}
-                {renderFieldWithPreview(
-                  "yesterday_summary",
-                  "What did you accomplish yesterday?",
-                  yesterdaySummary,
-                  setYesterdaySummary,
-                  "Describe what you completed...",
-                  3
-                )}
-
-                {/* Today's Plan */}
-                {renderFieldWithPreview(
-                  "today_plan",
-                  "What are you planning for today?",
-                  todayPlan,
-                  setTodayPlan,
-                  "List your goals for today...",
-                  3
-                )}
-
-                {/* Blockers */}
-                {renderFieldWithPreview(
-                  "blockers",
-                  "Any blockers?",
-                  blockers,
-                  setBlockers,
-                  "Describe any blockers or issues...",
-                  2
-                )}
-
-                {/* Linked Issues */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Linked Issues
-                    </label>
-                    {hasYesterdayIssues && (
-                      <button
-                        type="button"
-                        onClick={copyIssuesFromYesterday}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                      >
-                        <Copy className="w-3 h-3" />
-                        Copy from yesterday
-                      </button>
-                    )}
-                  </div>
-
-                  <IssueSelector
-                    selectedIssues={linkedIssues}
-                    onSelect={setLinkedIssues}
-                    hideLabel
-                    hideSelectedDisplay
-                  />
-
-                  {/* Display linked issues with titles */}
-                  {linkedIssues.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {linkedIssues.map((issue) => (
-                        <div
-                          key={issue.id}
-                          className={cn(
-                            "flex items-center justify-between gap-2 px-3 py-2 rounded-md border",
-                            issue.identifier.startsWith("SCD-")
-                              ? "bg-gray-50 border-gray-200"
-                              : "bg-blue-50 border-blue-100"
-                          )}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={cn(
-                              "font-medium text-sm whitespace-nowrap",
-                              issue.identifier.startsWith("SCD-")
-                                ? "text-gray-700"
-                                : "text-blue-700"
-                            )}>
-                              {issue.identifier}
-                            </span>
-                            {issue.identifier.startsWith("SCD-") && (
-                              <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                            )}
-                            <span className={cn(
-                              "text-sm truncate",
-                              issue.identifier.startsWith("SCD-")
-                                ? "text-gray-600"
-                                : "text-blue-600"
-                            )}>
-                              {issue.title}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeIssue(issue.id)}
-                            className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end">
-                  <Button onClick={handleSave} loading={saving}>
-                    Save Standup
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </>
   );
 }
