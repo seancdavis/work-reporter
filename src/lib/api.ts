@@ -1,19 +1,12 @@
 // API client for work-tracker
 
 const API_BASE = "/api";
-const TOKEN_KEY = "work-tracker-token";
 
-// Token storage helpers
-function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
+// User context for authenticated requests
+let currentUser: { id: string; email: string } | null = null;
 
-function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
+export function setApiUser(user: { id: string; email: string } | null) {
+  currentUser = user;
 }
 
 // Types
@@ -80,11 +73,6 @@ export interface Kudo {
   updated_at: string;
 }
 
-export interface AuthStatus {
-  authenticated: boolean;
-  type: "admin" | "kudos" | null;
-}
-
 export type ResearchColumn = "ideas" | "exploring" | "planned" | "implemented" | "closed";
 
 export interface ResearchNote {
@@ -120,14 +108,15 @@ async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  // Add user headers for authenticated requests
+  if (currentUser) {
+    headers["x-user-id"] = currentUser.id;
+    headers["x-user-email"] = currentUser.email;
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -142,30 +131,6 @@ async function fetchApi<T>(
 
   return response.json();
 }
-
-// Auth API
-export const auth = {
-  status: () => fetchApi<AuthStatus>("/auth"),
-
-  login: async (password: string, type: "admin" | "kudos" = "admin") => {
-    const result = await fetchApi<{ success: boolean; type: string; token: string }>("/auth", {
-      method: "POST",
-      body: JSON.stringify({ password, type }),
-    });
-    if (result.token) {
-      setToken(result.token);
-    }
-    return result;
-  },
-
-  logout: async () => {
-    const result = await fetchApi<{ success: boolean }>("/auth", {
-      method: "DELETE",
-    });
-    clearToken();
-    return result;
-  },
-};
 
 // Daily Standups API
 export const dailyStandups = {
@@ -268,10 +233,11 @@ export const kudos = {
       if (data.tags) formData.append("tags", JSON.stringify(data.tags));
       formData.append("screenshot", data.screenshot);
 
-      const token = getToken();
+      // Build headers for file upload (no Content-Type, let browser set it)
       const headers: Record<string, string> = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+      if (currentUser) {
+        headers["x-user-id"] = currentUser.id;
+        headers["x-user-email"] = currentUser.email;
       }
 
       const response = await fetch(`${API_BASE}/kudos`, {

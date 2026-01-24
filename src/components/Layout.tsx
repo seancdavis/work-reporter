@@ -1,17 +1,25 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import { cn } from "../lib/utils";
 
-const navItems = [
+const baseNavItems = [
   { path: "/", label: "Daily" },
   { path: "/weekly", label: "Weekly" },
   { path: "/reports", label: "Reports" },
   { path: "/research", label: "Research" },
-  { path: "/kudos", label: "Kudos" },
 ];
 
 export function Layout() {
   const location = useLocation();
+  const { user, permissions, signOut } = useAuth();
   const isResearchPage = location.pathname.startsWith("/research");
+
+  // Build nav items based on permissions
+  const navItems = [
+    ...baseNavItems,
+    // Only show Kudos if user has viewKudos permission
+    ...(permissions.viewKudos ? [{ path: "/kudos", label: "Kudos" }] : []),
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -38,6 +46,36 @@ export function Layout() {
                   </Link>
                 ))}
               </nav>
+            </div>
+            <div className="flex items-center gap-4">
+              {permissions.admin && (
+                <Link
+                  to="/admin/daily"
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Admin
+                </Link>
+              )}
+              {user && (
+                <div className="flex items-center gap-3">
+                  {user.image && (
+                    <img
+                      src={user.image}
+                      alt=""
+                      className="w-8 h-8 rounded-full"
+                    />
+                  )}
+                  <span className="text-sm text-gray-600">
+                    {user.name || user.email}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={signOut}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         </div>

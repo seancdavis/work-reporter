@@ -1,57 +1,112 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
-import { auth, type AuthStatus } from "../lib/api";
+import { authClient } from "../lib/auth";
+import { setApiUser } from "../lib/api";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  image?: string | null;
+}
+
+interface Session {
+  id: string;
+  userId: string;
+  expiresAt: Date;
+}
+
+interface Permissions {
+  read: boolean;       // Can view public pages (daily, weekly, reports, research)
+  viewKudos: boolean;  // Can view kudos page
+  admin: boolean;      // Can access admin pages
+}
 
 interface AuthContextValue {
-  status: AuthStatus;
+  user: User | null;
+  session: Session | null;
   loading: boolean;
-  login: (password: string, type?: "admin" | "kudos") => Promise<boolean>;
-  logout: () => Promise<void>;
-  refresh: () => Promise<void>;
+  authenticated: boolean;
+  permissions: Permissions;
+  signInWithGoogle: (callbackURL: string) => void;
+  signOut: () => Promise<void>;
+  refetch: () => Promise<void>;
 }
+
+const defaultPermissions: Permissions = { read: false, viewKudos: false, admin: false };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuthProvider() {
-  const [status, setStatus] = useState<AuthStatus>({
-    authenticated: false,
-    type: null,
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [permissions, setPermissions] = useState<Permissions>(defaultPermissions);
 
-  const refresh = useCallback(async () => {
+  const fetchSession = useCallback(async () => {
     try {
-      const result = await auth.status();
-      setStatus(result);
+      const { data } = await authClient.getSession();
+      setUser(data?.user ?? null);
+      setSession(data?.session ?? null);
+
+      // Update API client with user info for authenticated requests
+      if (data?.user?.id && data?.user?.email) {
+        setApiUser({ id: data.user.id, email: data.user.email });
+
+        // Fetch permissions from backend
+        const authResponse = await fetch("/api/auth", {
+          headers: {
+            "x-user-id": data.user.id,
+            "x-user-email": data.user.email,
+          },
+        });
+        const authData = await authResponse.json();
+        setAuthenticated(authData.authenticated ?? false);
+        setPermissions(authData.permissions ?? defaultPermissions);
+      } else {
+        setApiUser(null);
+        setAuthenticated(false);
+        setPermissions(defaultPermissions);
+      }
     } catch (error) {
-      setStatus({ authenticated: false, type: null });
+      console.error("Failed to fetch session:", error);
+      setUser(null);
+      setSession(null);
+      setApiUser(null);
+      setAuthenticated(false);
+      setPermissions(defaultPermissions);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const login = useCallback(async (password: string, type: "admin" | "kudos" = "admin") => {
-    try {
-      await auth.login(password, type);
-      await refresh();
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }, [refresh]);
+  useEffect(() => {
+    fetchSession();
+  }, [fetchSession]);
 
-  const logout = useCallback(async () => {
-    try {
-      await auth.logout();
-    } finally {
-      setStatus({ authenticated: false, type: null });
-    }
+  const signInWithGoogle = useCallback((callbackURL: string) => {
+    authClient.signIn.social({
+      provider: "google",
+      callbackURL: `${window.location.origin}${callbackURL}`,
+    });
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const signOut = useCallback(async () => {
+    await authClient.signOut();
+    // Hard redirect clears all state
+    window.location.href = "/";
+  }, []);
 
-  return { status, loading, login, logout, refresh };
+  return {
+    user,
+    session,
+    loading,
+    authenticated,
+    permissions,
+    signInWithGoogle,
+    signOut,
+    refetch: fetchSession,
+  };
 }
 
 export { AuthContext };

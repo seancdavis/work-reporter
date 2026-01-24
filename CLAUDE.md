@@ -14,6 +14,7 @@ Reference `.agents/netlify-*.md` files for Netlify best practices:
 - Never add CORS headers unless explicitly requested
 - Use `npm run dev` for local development (enables Vite plugin emulation)
 - For AI Gateway: use the official SDK (e.g., `@anthropic-ai/sdk`) - it auto-reads `process.env.ANTHROPIC_API_KEY` and `process.env.ANTHROPIC_BASE_URL`
+- **Local dev limitation:** The `@netlify/vite-plugin` does NOT fetch `VITE_*` env vars from Netlify dashboard. Create `.env.local` with `VITE_NEON_AUTH_URL` for local dev.
 
 ## Overview
 
@@ -35,18 +36,19 @@ A work reporting application for:
 | AI | Netlify AI Gateway → `claude-haiku-4-5-20251001` |
 | Image Storage | Netlify Blobs |
 | Deployment | Netlify |
-| Auth (MVP) | Simple password at hidden route |
+| Auth | Google OAuth via Neon Auth |
 
 ## Project Structure
 
 ```
 /src
   /pages
-    /public       # Read-only public pages (DailyPublicPage, WeeklyPublicPage, etc.)
+    /public       # Read-only pages (DailyPublicPage, WeeklyPublicPage, etc.)
     /admin        # Admin pages with edit functionality (DailyAdminPage, etc.)
-    AdminAuthPage.tsx  # Login page at /admin
+    SignInPage.tsx      # Google sign-in page (shown when not authenticated)
+    UnauthorizedPage.tsx # Shown when user lacks permission
   /components     # Reusable UI components
-  /lib            # API client, utilities
+  /lib            # API client, auth client, utilities
   /hooks          # React hooks
 
 /netlify/functions
@@ -57,9 +59,10 @@ A work reporting application for:
 
 ```env
 NETLIFY_DATABASE_URL=postgresql://...  # Set automatically by Netlify DB
+VITE_NEON_AUTH_URL=https://ep-xxx.neonauth.us-east-2.aws.neon.build/neondb/auth  # From Neon Console
 LINEAR_API_KEY=lin_api_...
-ADMIN_PASSWORD=...
-KUDOS_PASSWORD=...
+ADMIN_EMAILS=admin@example.com,admin2@example.com  # Comma-separated list
+MANAGER_EMAILS=manager@example.com  # Comma-separated list (can view kudos)
 ANTHROPIC_API_KEY=...  # For AI summaries (optional)
 ```
 
@@ -85,7 +88,7 @@ npm run db:studio     # Open Drizzle Studio GUI
 4. **Kudos Recording** - Text, sender, screenshot, context
 5. **Linear Integration** - Fetch active issues, link to reports
 6. **AI Processing** - Structure free-form input, link issues
-7. **Authentication** - Password-based admin mode vs read-only
+7. **Authentication** - Google OAuth via Neon Auth with email allowlist
 8. **Research Kanban Board** - Drag-and-drop board to track research items linked to Linear issues
 
 ## Daily Standup Features
@@ -115,18 +118,34 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 ## Authentication Model
 
+Uses **Neon Auth** (built on Better Auth) with Google OAuth. All routes require authentication.
+
+**Permission Levels:**
+- `@netlify.com` emails → can read public pages (daily, weekly, reports, research)
+- `MANAGER_EMAILS` → can view kudos page (and future manager features)
+- `ADMIN_EMAILS` → can access admin pages (and all other pages)
+
 **Route Structure:**
-- Public routes (`/`, `/weekly`, `/reports`, `/research`) = read-only, no auth
-- Public kudos (`/kudos`) = read-only, requires kudos password
-- Admin routes (`/admin/*`) = full write access, requires admin password
+- All routes require Google sign-in first
+- `/`, `/weekly`, `/reports`, `/research` = requires `read` permission (@netlify.com or admin)
+- `/kudos` = requires `viewKudos` permission (MANAGER_EMAILS or admin)
+- `/admin/*` = requires `admin` permission (ADMIN_EMAILS only)
 
 **Key Components:**
-- `AdminLayout` = auth gate wrapper for `/admin/*` routes, redirects to `/admin` if unauthenticated
-- `AdminAuthPage` = login page at `/admin`, redirects to `/admin/daily` on success
+- `src/lib/auth.ts` = Neon Auth client (uses same-domain proxy in prod for mobile ITP compatibility)
+- `src/hooks/useAuth.ts` = Auth context with session, user, permissions, signInWithGoogle, signOut
+- `src/pages/SignInPage.tsx` = Google sign-in page (shown for unauthenticated users)
+- `src/pages/UnauthorizedPage.tsx` = Shown when user lacks required permission
+- `AdminLayout` = Layout wrapper for `/admin/*` routes
 
 **API Protection:**
-- All write endpoints require admin auth
-- Kudos write operations (POST/PUT/DELETE) require admin auth (not kudos password)
+- Frontend passes `x-user-id` and `x-user-email` headers with authenticated requests
+- Backend validates email and returns permissions from `/api/auth`
+- All write endpoints require admin permission
+
+**Mobile Proxy:**
+- Production uses `/neon-auth/*` proxy to Neon Auth URL for mobile ITP compatibility
+- Configured in `netlify.toml` using `VITE_NEON_AUTH_URL` env var
 
 ## Linear Integration
 

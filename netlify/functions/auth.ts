@@ -1,56 +1,26 @@
 import type { Config } from "@netlify/functions";
-import {
-  createSession,
-  deleteSession,
-  verifyPassword,
-  validateSession,
-  getTokenFromRequest,
-} from "./_shared/auth";
+import { getPermissionsFromEmail } from "./_shared/auth";
 
 export default async (req: Request): Promise<Response> => {
-  // GET - Check current auth status
+  // GET - Check current auth status and permissions
   if (req.method === "GET") {
-    const token = getTokenFromRequest(req);
+    const userId = req.headers.get("x-user-id");
+    const email = req.headers.get("x-user-email");
 
-    const { valid, type } = await validateSession(token);
-
-    return Response.json({ authenticated: valid, type: type || null });
-  }
-
-  // POST - Login
-  if (req.method === "POST") {
-    try {
-      const { password, type = "admin" } = await req.json() as {
-        password: string;
-        type?: "admin" | "kudos";
-      };
-
-      if (!password) {
-        return Response.json({ error: "Password required" }, { status: 400 });
-      }
-
-      if (!verifyPassword(password, type)) {
-        return Response.json({ error: "Invalid password" }, { status: 401 });
-      }
-
-      const token = await createSession(type);
-
-      // Return token in response body (stored in localStorage by frontend)
-      return Response.json({ success: true, type, token });
-    } catch (error) {
-      console.error("[AUTH POST] Login error:", error);
-      return Response.json({ error: "Login failed" }, { status: 500 });
-    }
-  }
-
-  // DELETE - Logout
-  if (req.method === "DELETE") {
-    const token = getTokenFromRequest(req);
-    if (token) {
-      await deleteSession(token);
+    if (!userId || !email) {
+      return Response.json({
+        authenticated: false,
+        permissions: { read: false, viewKudos: false, admin: false },
+      });
     }
 
-    return Response.json({ success: true });
+    const permissions = getPermissionsFromEmail(email);
+    const hasAnyPermission = permissions.read || permissions.viewKudos || permissions.admin;
+
+    return Response.json({
+      authenticated: hasAnyPermission,
+      permissions,
+    });
   }
 
   return Response.json({ error: "Method not allowed" }, { status: 405 });
