@@ -8,14 +8,14 @@ import { MarkdownContent } from "../../components/MarkdownContent";
 import { AICleanupButton } from "../../components/AICleanupButton";
 import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
-import { formatDate, formatDateDisplay, formatDateShort, timeAgo, cn } from "../../lib/utils";
+import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, timeAgo, cn } from "../../lib/utils";
 
 type PreviewField = "yesterday_summary" | "today_plan" | "blockers";
 
 export function DailyAdminPage() {
   const [standups, setStandups] = useState<DailyStandup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
+  const [selectedDate, setSelectedDate] = useState(formatDate(getWeekdayDate()));
   const [saving, setSaving] = useState(false);
   const { toasts, showToast, dismissToast } = useToast();
 

@@ -21,6 +21,19 @@ export function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
+export function getWeekdayDate(date: Date = new Date()): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  // If Saturday (6), go back 1 day to Friday
+  // If Sunday (0), go back 2 days to Friday
+  if (day === 6) {
+    d.setDate(d.getDate() - 1);
+  } else if (day === 0) {
+    d.setDate(d.getDate() - 2);
+  }
+  return d;
+}
+
 export function formatDateDisplay(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00");
   return date.toLocaleDateString("en-US", {

@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { dailyStandups, type DailyStandup } from "../../lib/api";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { CardLoader } from "../../components/LoadingSpinner";
-import { formatDate, formatDateDisplay, formatDateShort, timeAgo, cn } from "../../lib/utils";
+import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, timeAgo, cn } from "../../lib/utils";
 
 export function DailyPublicPage() {
   const [standups, setStandups] = useState<DailyStandup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
+  const [selectedDate, setSelectedDate] = useState(formatDate(getWeekdayDate()));
 
   // Fetch recent standups
   useEffect(() => {
