@@ -1,57 +1,98 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
-import { auth, type AuthStatus } from "../lib/api";
+import { authClient } from "../lib/auth";
+import { setApiUser } from "../lib/api";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  image?: string | null;
+}
+
+interface Session {
+  id: string;
+  userId: string;
+  expiresAt: Date;
+}
 
 interface AuthContextValue {
-  status: AuthStatus;
+  user: User | null;
+  session: Session | null;
   loading: boolean;
-  login: (password: string, type?: "admin" | "kudos") => Promise<boolean>;
-  logout: () => Promise<void>;
-  refresh: () => Promise<void>;
+  accessType: "admin" | "kudos" | null;
+  signInWithGoogle: (callbackURL: string) => void;
+  signOut: () => Promise<void>;
+  refetch: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuthProvider() {
-  const [status, setStatus] = useState<AuthStatus>({
-    authenticated: false,
-    type: null,
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accessType, setAccessType] = useState<"admin" | "kudos" | null>(null);
 
-  const refresh = useCallback(async () => {
+  const fetchSession = useCallback(async () => {
     try {
-      const result = await auth.status();
-      setStatus(result);
+      const { data } = await authClient.getSession();
+      setUser(data?.user ?? null);
+      setSession(data?.session ?? null);
+
+      // Update API client with user info for authenticated requests
+      if (data?.user?.id && data?.user?.email) {
+        setApiUser({ id: data.user.id, email: data.user.email });
+
+        // Fetch access type from backend (which checks email allowlist)
+        const authResponse = await fetch("/api/auth", {
+          headers: {
+            "x-user-id": data.user.id,
+            "x-user-email": data.user.email,
+          },
+        });
+        const authData = await authResponse.json();
+        setAccessType(authData.type ?? null);
+      } else {
+        setApiUser(null);
+        setAccessType(null);
+      }
     } catch (error) {
-      setStatus({ authenticated: false, type: null });
+      console.error("Failed to fetch session:", error);
+      setUser(null);
+      setSession(null);
+      setApiUser(null);
+      setAccessType(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const login = useCallback(async (password: string, type: "admin" | "kudos" = "admin") => {
-    try {
-      await auth.login(password, type);
-      await refresh();
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }, [refresh]);
+  useEffect(() => {
+    fetchSession();
+  }, [fetchSession]);
 
-  const logout = useCallback(async () => {
-    try {
-      await auth.logout();
-    } finally {
-      setStatus({ authenticated: false, type: null });
-    }
+  const signInWithGoogle = useCallback((callbackURL: string) => {
+    authClient.signIn.social({
+      provider: "google",
+      callbackURL: `${window.location.origin}${callbackURL}`,
+    });
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const signOut = useCallback(async () => {
+    await authClient.signOut();
+    // Hard redirect clears all state
+    window.location.href = "/";
+  }, []);
 
-  return { status, loading, login, logout, refresh };
+  return {
+    user,
+    session,
+    loading,
+    accessType,
+    signInWithGoogle,
+    signOut,
+    refetch: fetchSession,
+  };
 }
 
 export { AuthContext };

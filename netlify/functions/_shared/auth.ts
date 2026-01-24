@@ -1,93 +1,54 @@
-import { db, schema } from "./db";
-import { eq } from "drizzle-orm";
+/**
+ * Authentication utilities for Neon Auth (header-based + email allowlist)
+ */
 
-const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+/**
+ * Determines access type based on email allowlists
+ */
+export function getAccessTypeFromEmail(email: string): "admin" | "kudos" | null {
+  const adminEmails = (Netlify.env.get("ADMIN_EMAILS") || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const kudosEmails = (Netlify.env.get("KUDOS_EMAILS") || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 
-function generateSessionId(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+  const normalizedEmail = email.toLowerCase();
+  if (adminEmails.includes(normalizedEmail)) return "admin";
+  if (kudosEmails.includes(normalizedEmail)) return "kudos";
+  return null;
 }
 
-export async function createSession(type: "admin" | "kudos"): Promise<string> {
-  const sessionId = generateSessionId();
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-
-  await db.insert(schema.sessions).values({
-    id: sessionId,
-    type,
-    expiresAt,
-  });
-
-  return sessionId;
-}
-
-export async function validateSession(
-  token: string | null,
-  requiredType?: "admin" | "kudos"
-): Promise<{ valid: boolean; type?: string }> {
-  if (!token) {
-    return { valid: false };
-  }
-
-  const result = await db
-    .select()
-    .from(schema.sessions)
-    .where(eq(schema.sessions.id, token))
-    .limit(1);
-
-  if (result.length === 0) {
-    return { valid: false };
-  }
-
-  const session = result[0];
-
-  // Check if expired
-  if (new Date(session.expiresAt) <= new Date()) {
-    return { valid: false };
-  }
-
-  // Admin can access everything, kudos can only access kudos
-  if (requiredType === "kudos" && session.type !== "admin" && session.type !== "kudos") {
-    return { valid: false };
-  }
-
-  if (requiredType === "admin" && session.type !== "admin") {
-    return { valid: false };
-  }
-
-  return { valid: true, type: session.type };
-}
-
-export async function deleteSession(token: string): Promise<void> {
-  await db.delete(schema.sessions).where(eq(schema.sessions.id, token));
-}
-
-export function verifyPassword(password: string, type: "admin" | "kudos"): boolean {
-  const expectedPassword =
-    type === "admin"
-      ? Netlify.env.get("ADMIN_PASSWORD")
-      : Netlify.env.get("KUDOS_PASSWORD");
-
-  return password === expectedPassword;
-}
-
-// Extract token from Authorization header (Bearer token)
-export function getTokenFromRequest(req: Request): string | null {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
-  }
-  return authHeader.slice(7); // Remove "Bearer " prefix
-}
-
-// Helper to check auth using Authorization header
+/**
+ * Validates request authentication using headers and email allowlist
+ */
 export async function requireAuth(
   req: Request,
   requiredType?: "admin" | "kudos"
-): Promise<{ authorized: boolean; type?: string }> {
-  const token = getTokenFromRequest(req);
-  const { valid, type } = await validateSession(token, requiredType);
+): Promise<{ authorized: boolean; type?: string; userId?: string; email?: string }> {
+  const userId = req.headers.get("x-user-id");
+  const email = req.headers.get("x-user-email");
 
-  return { authorized: valid, type };
+  if (!userId || !email) {
+    return { authorized: false };
+  }
+
+  const accessType = getAccessTypeFromEmail(email);
+  if (!accessType) {
+    return { authorized: false }; // Email not in any allowlist
+  }
+
+  // Check required type (admin can access everything)
+  if (requiredType === "admin" && accessType !== "admin") {
+    return { authorized: false };
+  }
+
+  // For kudos requirement, both admin and kudos users have access
+  if (requiredType === "kudos" && accessType !== "admin" && accessType !== "kudos") {
+    return { authorized: false };
+  }
+
+  return { authorized: true, type: accessType, userId, email };
 }

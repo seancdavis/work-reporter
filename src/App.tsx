@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { AdminLayout } from "./components/AdminLayout";
 import { PageLoader } from "./components/LoadingSpinner";
@@ -15,6 +16,23 @@ import { ResearchAdminPage } from "./pages/admin/ResearchAdminPage";
 import { KudosAdminPage } from "./pages/admin/KudosAdminPage";
 import { AuthContext, useAuthProvider } from "./hooks/useAuth";
 
+// Component to handle OAuth callback verifier cleanup
+function OAuthCallbackHandler({ refetch }: { refetch: () => Promise<void> }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.has("neon_auth_session_verifier")) {
+      refetch().then(() => {
+        // Clean up URL after session is verified
+        searchParams.delete("neon_auth_session_verifier");
+        setSearchParams(searchParams, { replace: true });
+      });
+    }
+  }, [searchParams, setSearchParams, refetch]);
+
+  return null;
+}
+
 function AppContent() {
   const authValue = useAuthProvider();
 
@@ -25,6 +43,7 @@ function AppContent() {
   return (
     <AuthContext.Provider value={authValue}>
       <BrowserRouter>
+        <OAuthCallbackHandler refetch={authValue.refetch} />
         <Routes>
           {/* Public routes with public Layout */}
           <Route element={<Layout />}>

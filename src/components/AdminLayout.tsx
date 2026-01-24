@@ -14,9 +14,9 @@ const adminNavItems = [
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { status, logout } = useAuth();
+  const { user, accessType, signOut } = useAuth();
 
-  const isAdmin = status.authenticated && status.type === "admin";
+  const isAdmin = accessType === "admin";
   const isResearchPage = location.pathname.startsWith("/admin/research");
 
   // Redirect to login if not authenticated as admin
@@ -32,8 +32,7 @@ export function AdminLayout() {
   }
 
   const handleLogout = () => {
-    logout();
-    navigate("/");
+    signOut();
   };
 
   return (
@@ -68,6 +67,20 @@ export function AdminLayout() {
               </nav>
             </div>
             <div className="flex items-center gap-4">
+              {user && (
+                <div className="flex items-center gap-3">
+                  {user.image && (
+                    <img
+                      src={user.image}
+                      alt=""
+                      className="w-8 h-8 rounded-full"
+                    />
+                  )}
+                  <span className="text-sm text-gray-600">
+                    {user.name || user.email}
+                  </span>
+                </div>
+              )}
               <Link
                 to="/"
                 className="text-sm text-gray-600 hover:text-gray-900"
@@ -78,7 +91,7 @@ export function AdminLayout() {
                 onClick={handleLogout}
                 className="text-sm text-gray-600 hover:text-gray-900"
               >
-                Logout
+                Sign Out
               </button>
             </div>
           </div>

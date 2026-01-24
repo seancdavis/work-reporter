@@ -7,6 +7,12 @@
   command = "npm run dev"
   targetPort = 5173
 
+# Neon Auth proxy for mobile ITP compatibility
+[[redirects]]
+  from = "/neon-auth/*"
+  to = "${VITE_NEON_AUTH_URL}/:splat"
+  status = 200
+
 # SPA fallback
 [[redirects]]
   from = "/*"

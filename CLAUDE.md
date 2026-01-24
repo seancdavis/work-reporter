@@ -35,7 +35,7 @@ A work reporting application for:
 | AI | Netlify AI Gateway → `claude-haiku-4-5-20251001` |
 | Image Storage | Netlify Blobs |
 | Deployment | Netlify |
-| Auth (MVP) | Simple password at hidden route |
+| Auth | Google OAuth via Neon Auth |
 
 ## Project Structure
 
@@ -57,9 +57,10 @@ A work reporting application for:
 
 ```env
 NETLIFY_DATABASE_URL=postgresql://...  # Set automatically by Netlify DB
+VITE_NEON_AUTH_URL=https://ep-xxx.neonauth.us-east-2.aws.neon.build/neondb/auth  # From Neon Console
 LINEAR_API_KEY=lin_api_...
-ADMIN_PASSWORD=...
-KUDOS_PASSWORD=...
+ADMIN_EMAILS=admin@example.com,admin2@example.com  # Comma-separated list
+KUDOS_EMAILS=viewer@example.com  # Comma-separated list
 ANTHROPIC_API_KEY=...  # For AI summaries (optional)
 ```
 
@@ -85,7 +86,7 @@ npm run db:studio     # Open Drizzle Studio GUI
 4. **Kudos Recording** - Text, sender, screenshot, context
 5. **Linear Integration** - Fetch active issues, link to reports
 6. **AI Processing** - Structure free-form input, link issues
-7. **Authentication** - Password-based admin mode vs read-only
+7. **Authentication** - Google OAuth via Neon Auth with email allowlist
 8. **Research Kanban Board** - Drag-and-drop board to track research items linked to Linear issues
 
 ## Daily Standup Features
@@ -115,18 +116,28 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 ## Authentication Model
 
+Uses **Neon Auth** (built on Better Auth) with Google OAuth. Users, sessions stored in `neon_auth` schema.
+
 **Route Structure:**
 - Public routes (`/`, `/weekly`, `/reports`, `/research`) = read-only, no auth
-- Public kudos (`/kudos`) = read-only, requires kudos password
-- Admin routes (`/admin/*`) = full write access, requires admin password
+- Kudos page (`/kudos`) = requires Google sign-in, email must be in ADMIN_EMAILS or KUDOS_EMAILS
+- Admin routes (`/admin/*`) = requires Google sign-in, email must be in ADMIN_EMAILS
 
 **Key Components:**
-- `AdminLayout` = auth gate wrapper for `/admin/*` routes, redirects to `/admin` if unauthenticated
-- `AdminAuthPage` = login page at `/admin`, redirects to `/admin/daily` on success
+- `src/lib/auth.ts` = Neon Auth client (uses same-domain proxy in prod for mobile ITP compatibility)
+- `src/hooks/useAuth.ts` = Auth context with session, user, accessType, signInWithGoogle, signOut
+- `AdminLayout` = auth gate wrapper for `/admin/*` routes
+- `AdminAuthPage` = Google sign-in page at `/admin`
 
 **API Protection:**
+- Frontend passes `x-user-id` and `x-user-email` headers with authenticated requests
+- Backend validates email against allowlist (ADMIN_EMAILS, KUDOS_EMAILS env vars)
+- Frontend fetches access type from `/api/auth` after OAuth callback
 - All write endpoints require admin auth
-- Kudos write operations (POST/PUT/DELETE) require admin auth (not kudos password)
+
+**Mobile Proxy:**
+- Production uses `/neon-auth/*` proxy to Neon Auth URL for mobile ITP compatibility
+- Configured in `netlify.toml` using `VITE_NEON_AUTH_URL` env var
 
 ## Linear Integration
 

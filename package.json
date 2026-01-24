@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@neondatabase/neon-js": "^0.1.0-beta.22",
     "@netlify/blobs": "^10.5.0",
     "@netlify/neon": "^0.1.2",
     "drizzle-orm": "^0.45.1",

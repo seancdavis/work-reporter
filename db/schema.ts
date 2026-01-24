@@ -45,13 +45,6 @@ export const kudos = pgTable('kudos', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const sessions = pgTable('sessions', {
-  id: text('id').primaryKey(),
-  type: text('type').notNull(), // 'admin' or 'kudos'
-  expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
 // Research kanban board items - linked to Linear issues
 export const researchItems = pgTable('research_items', {
   id: serial('id').primaryKey(),
