@@ -15,15 +15,24 @@ interface Session {
   expiresAt: Date;
 }
 
+interface Permissions {
+  read: boolean;       // Can view public pages (daily, weekly, reports, research)
+  viewKudos: boolean;  // Can view kudos page
+  admin: boolean;      // Can access admin pages
+}
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  accessType: "admin" | "kudos" | null;
+  authenticated: boolean;
+  permissions: Permissions;
   signInWithGoogle: (callbackURL: string) => void;
   signOut: () => Promise<void>;
   refetch: () => Promise<void>;
 }
+
+const defaultPermissions: Permissions = { read: false, viewKudos: false, admin: false };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -31,7 +40,8 @@ export function useAuthProvider() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [accessType, setAccessType] = useState<"admin" | "kudos" | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [permissions, setPermissions] = useState<Permissions>(defaultPermissions);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -43,7 +53,7 @@ export function useAuthProvider() {
       if (data?.user?.id && data?.user?.email) {
         setApiUser({ id: data.user.id, email: data.user.email });
 
-        // Fetch access type from backend (which checks email allowlist)
+        // Fetch permissions from backend
         const authResponse = await fetch("/api/auth", {
           headers: {
             "x-user-id": data.user.id,
@@ -51,17 +61,20 @@ export function useAuthProvider() {
           },
         });
         const authData = await authResponse.json();
-        setAccessType(authData.type ?? null);
+        setAuthenticated(authData.authenticated ?? false);
+        setPermissions(authData.permissions ?? defaultPermissions);
       } else {
         setApiUser(null);
-        setAccessType(null);
+        setAuthenticated(false);
+        setPermissions(defaultPermissions);
       }
     } catch (error) {
       console.error("Failed to fetch session:", error);
       setUser(null);
       setSession(null);
       setApiUser(null);
-      setAccessType(null);
+      setAuthenticated(false);
+      setPermissions(defaultPermissions);
     } finally {
       setLoading(false);
     }
@@ -88,7 +101,8 @@ export function useAuthProvider() {
     user,
     session,
     loading,
-    accessType,
+    authenticated,
+    permissions,
     signInWithGoogle,
     signOut,
     refetch: fetchSession,

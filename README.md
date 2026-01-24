@@ -15,8 +15,19 @@ A work reporting application for daily/weekly standup reporting, recording kudos
 
 ```bash
 npm install
+```
+
+Create a `.env.local` file with your Neon Auth URL (from Neon Console > Auth):
+```
+VITE_NEON_AUTH_URL=https://ep-xxx.neonauth.us-east-2.aws.neon.build/neondb/auth
+```
+
+Then run:
+```bash
 npm run dev
 ```
+
+**Note:** The `@netlify/vite-plugin` does not fetch environment variables from the Netlify dashboard during local dev. You need a local `.env.local` file for `VITE_NEON_AUTH_URL`.
 
 ## Key Features
 
@@ -29,26 +40,23 @@ npm run dev
 
 ## Route Structure
 
-The app separates public (read-only) and admin (write) views:
+All routes require Google sign-in via Neon Auth. Access is determined by email:
 
-### Public Routes (no auth required)
-| Route | Purpose |
-|-------|---------|
-| `/` | View daily standups |
-| `/weekly` | View weekly standups |
-| `/reports` | View weekly reports |
-| `/research` | View research board |
-| `/kudos` | View kudos (requires kudos password) |
+| Permission | Who | Access |
+|------------|-----|--------|
+| Read | `@netlify.com` emails | `/`, `/weekly`, `/reports`, `/research` |
+| Kudos | `MANAGER_EMAILS` list | `/kudos` |
+| Admin | `ADMIN_EMAILS` list | `/admin/*` (full access) |
 
-### Admin Routes (auth required)
-| Route | Purpose |
-|-------|---------|
-| `/admin` | Login page |
-| `/admin/daily` | Edit daily standups |
-| `/admin/weekly` | Edit weekly standups |
-| `/admin/reports` | Generate AI summaries |
-| `/admin/research` | Manage research board |
-| `/admin/kudos` | Manage kudos |
+### Routes
+| Route | Permission Required |
+|-------|---------------------|
+| `/` | read |
+| `/weekly` | read |
+| `/reports` | read |
+| `/research` | read |
+| `/kudos` | viewKudos |
+| `/admin/*` | admin |
 
 ## Database Commands
 
@@ -62,7 +70,10 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 Set via Netlify UI or CLI:
 
+- `VITE_NEON_AUTH_URL` - Neon Auth URL (from Neon Console)
 - `LINEAR_API_KEY` - Linear API access
-- `ADMIN_PASSWORD` - Admin authentication
-- `KUDOS_PASSWORD` - Kudos-only authentication
+- `ADMIN_EMAILS` - Comma-separated list of admin emails
+- `MANAGER_EMAILS` - Comma-separated list of manager emails (can view kudos)
 - `ANTHROPIC_API_KEY` / `ANTHROPIC_BASE_URL` - Auto-injected by Netlify AI Gateway
+
+**Local dev:** Create `.env.local` with `VITE_NEON_AUTH_URL` (other vars fetched by Netlify plugin).

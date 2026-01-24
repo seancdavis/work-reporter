@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { AdminLayout } from "./components/AdminLayout";
 import { PageLoader } from "./components/LoadingSpinner";
-import { AdminAuthPage } from "./pages/AdminAuthPage";
+import { SignInPage } from "./pages/SignInPage";
+import { UnauthorizedPage } from "./pages/UnauthorizedPage";
 import { DailyPublicPage } from "./pages/public/DailyPublicPage";
 import { WeeklyPublicPage } from "./pages/public/WeeklyPublicPage";
 import { ReportsPublicPage } from "./pages/public/ReportsPublicPage";
@@ -14,7 +15,7 @@ import { WeeklyAdminPage } from "./pages/admin/WeeklyAdminPage";
 import { ReportsAdminPage } from "./pages/admin/ReportsAdminPage";
 import { ResearchAdminPage } from "./pages/admin/ResearchAdminPage";
 import { KudosAdminPage } from "./pages/admin/KudosAdminPage";
-import { AuthContext, useAuthProvider } from "./hooks/useAuth";
+import { AuthContext, useAuthProvider, useAuth } from "./hooks/useAuth";
 
 // Component to handle OAuth callback verifier cleanup
 function OAuthCallbackHandler({ refetch }: { refetch: () => Promise<void> }) {
@@ -33,6 +34,75 @@ function OAuthCallbackHandler({ refetch }: { refetch: () => Promise<void> }) {
   return null;
 }
 
+// Route guard for read permission (public pages)
+function RequireRead({ children }: { children: React.ReactNode }) {
+  const { permissions } = useAuth();
+  if (!permissions.read) {
+    return <UnauthorizedPage requiredPermission="read" />;
+  }
+  return <>{children}</>;
+}
+
+// Route guard for kudos permission
+function RequireKudos({ children }: { children: React.ReactNode }) {
+  const { permissions } = useAuth();
+  if (!permissions.viewKudos) {
+    return <UnauthorizedPage requiredPermission="viewKudos" />;
+  }
+  return <>{children}</>;
+}
+
+function AuthenticatedApp() {
+  const { authenticated, permissions } = useAuth();
+
+  // Not authenticated at all - show sign in
+  if (!authenticated) {
+    return <SignInPage />;
+  }
+
+  // Authenticated but no permissions - show unauthorized
+  const hasAnyPermission = permissions.read || permissions.viewKudos || permissions.admin;
+  if (!hasAnyPermission) {
+    return <UnauthorizedPage />;
+  }
+
+  // Determine default route based on permissions
+  const getDefaultRoute = () => {
+    if (permissions.admin) return "/admin/daily";
+    if (permissions.read) return "/";
+    if (permissions.viewKudos) return "/kudos";
+    return "/";
+  };
+
+  return (
+    <Routes>
+      {/* Public routes with read permission */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<RequireRead><DailyPublicPage /></RequireRead>} />
+        <Route path="/weekly" element={<RequireRead><WeeklyPublicPage /></RequireRead>} />
+        <Route path="/reports" element={<RequireRead><ReportsPublicPage /></RequireRead>} />
+        <Route path="/research" element={<RequireRead><ResearchPublicPage /></RequireRead>} />
+        <Route path="/research/:itemId" element={<RequireRead><ResearchPublicPage /></RequireRead>} />
+        <Route path="/kudos" element={<RequireKudos><KudosPublicPage /></RequireKudos>} />
+      </Route>
+
+      {/* Admin routes with AdminLayout auth gate */}
+      <Route element={<AdminLayout />}>
+        <Route path="/admin" element={<Navigate to="/admin/daily" replace />} />
+        <Route path="/admin/daily" element={<DailyAdminPage />} />
+        <Route path="/admin/weekly" element={<WeeklyAdminPage />} />
+        <Route path="/admin/reports" element={<ReportsAdminPage />} />
+        <Route path="/admin/research" element={<ResearchAdminPage />} />
+        <Route path="/admin/research/:itemId" element={<ResearchAdminPage />} />
+        <Route path="/admin/kudos" element={<KudosAdminPage />} />
+      </Route>
+
+      {/* Catch-all redirect to appropriate default */}
+      <Route path="*" element={<Navigate to={getDefaultRoute()} replace />} />
+    </Routes>
+  );
+}
+
 function AppContent() {
   const authValue = useAuthProvider();
 
@@ -44,30 +114,7 @@ function AppContent() {
     <AuthContext.Provider value={authValue}>
       <BrowserRouter>
         <OAuthCallbackHandler refetch={authValue.refetch} />
-        <Routes>
-          {/* Public routes with public Layout */}
-          <Route element={<Layout />}>
-            <Route path="/" element={<DailyPublicPage />} />
-            <Route path="/weekly" element={<WeeklyPublicPage />} />
-            <Route path="/reports" element={<ReportsPublicPage />} />
-            <Route path="/research" element={<ResearchPublicPage />} />
-            <Route path="/research/:itemId" element={<ResearchPublicPage />} />
-            <Route path="/kudos" element={<KudosPublicPage />} />
-          </Route>
-
-          {/* Admin login (standalone) */}
-          <Route path="/admin" element={<AdminAuthPage />} />
-
-          {/* Admin routes with AdminLayout auth gate */}
-          <Route element={<AdminLayout />}>
-            <Route path="/admin/daily" element={<DailyAdminPage />} />
-            <Route path="/admin/weekly" element={<WeeklyAdminPage />} />
-            <Route path="/admin/reports" element={<ReportsAdminPage />} />
-            <Route path="/admin/research" element={<ResearchAdminPage />} />
-            <Route path="/admin/research/:itemId" element={<ResearchAdminPage />} />
-            <Route path="/admin/kudos" element={<KudosAdminPage />} />
-          </Route>
-        </Routes>
+        <AuthenticatedApp />
       </BrowserRouter>
     </AuthContext.Provider>
   );

@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { cn } from "../lib/utils";
 
@@ -13,27 +12,14 @@ const adminNavItems = [
 
 export function AdminLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, accessType, signOut } = useAuth();
+  const { user, permissions, signOut } = useAuth();
 
-  const isAdmin = accessType === "admin";
   const isResearchPage = location.pathname.startsWith("/admin/research");
 
-  // Redirect to login if not authenticated as admin
-  useEffect(() => {
-    if (!isAdmin) {
-      navigate("/admin");
-    }
-  }, [isAdmin, navigate]);
-
-  // Don't render anything while redirecting
-  if (!isAdmin) {
-    return null;
+  // Redirect if not admin
+  if (!permissions.admin) {
+    return <Navigate to="/" replace />;
   }
-
-  const handleLogout = () => {
-    signOut();
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -88,7 +74,7 @@ export function AdminLayout() {
                 View Public Site
               </Link>
               <button
-                onClick={handleLogout}
+                onClick={signOut}
                 className="text-sm text-gray-600 hover:text-gray-900"
               >
                 Sign Out

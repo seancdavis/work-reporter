@@ -14,6 +14,7 @@ Reference `.agents/netlify-*.md` files for Netlify best practices:
 - Never add CORS headers unless explicitly requested
 - Use `npm run dev` for local development (enables Vite plugin emulation)
 - For AI Gateway: use the official SDK (e.g., `@anthropic-ai/sdk`) - it auto-reads `process.env.ANTHROPIC_API_KEY` and `process.env.ANTHROPIC_BASE_URL`
+- **Local dev limitation:** The `@netlify/vite-plugin` does NOT fetch `VITE_*` env vars from Netlify dashboard. Create `.env.local` with `VITE_NEON_AUTH_URL` for local dev.
 
 ## Overview
 
@@ -42,11 +43,12 @@ A work reporting application for:
 ```
 /src
   /pages
-    /public       # Read-only public pages (DailyPublicPage, WeeklyPublicPage, etc.)
+    /public       # Read-only pages (DailyPublicPage, WeeklyPublicPage, etc.)
     /admin        # Admin pages with edit functionality (DailyAdminPage, etc.)
-    AdminAuthPage.tsx  # Login page at /admin
+    SignInPage.tsx      # Google sign-in page (shown when not authenticated)
+    UnauthorizedPage.tsx # Shown when user lacks permission
   /components     # Reusable UI components
-  /lib            # API client, utilities
+  /lib            # API client, auth client, utilities
   /hooks          # React hooks
 
 /netlify/functions
@@ -60,7 +62,7 @@ NETLIFY_DATABASE_URL=postgresql://...  # Set automatically by Netlify DB
 VITE_NEON_AUTH_URL=https://ep-xxx.neonauth.us-east-2.aws.neon.build/neondb/auth  # From Neon Console
 LINEAR_API_KEY=lin_api_...
 ADMIN_EMAILS=admin@example.com,admin2@example.com  # Comma-separated list
-KUDOS_EMAILS=viewer@example.com  # Comma-separated list
+MANAGER_EMAILS=manager@example.com  # Comma-separated list (can view kudos)
 ANTHROPIC_API_KEY=...  # For AI summaries (optional)
 ```
 
@@ -116,24 +118,30 @@ npm run db:studio     # Open Drizzle Studio GUI
 
 ## Authentication Model
 
-Uses **Neon Auth** (built on Better Auth) with Google OAuth. Users, sessions stored in `neon_auth` schema.
+Uses **Neon Auth** (built on Better Auth) with Google OAuth. All routes require authentication.
+
+**Permission Levels:**
+- `@netlify.com` emails → can read public pages (daily, weekly, reports, research)
+- `MANAGER_EMAILS` → can view kudos page (and future manager features)
+- `ADMIN_EMAILS` → can access admin pages (and all other pages)
 
 **Route Structure:**
-- Public routes (`/`, `/weekly`, `/reports`, `/research`) = read-only, no auth
-- Kudos page (`/kudos`) = requires Google sign-in, email must be in ADMIN_EMAILS or KUDOS_EMAILS
-- Admin routes (`/admin/*`) = requires Google sign-in, email must be in ADMIN_EMAILS
+- All routes require Google sign-in first
+- `/`, `/weekly`, `/reports`, `/research` = requires `read` permission (@netlify.com or admin)
+- `/kudos` = requires `viewKudos` permission (MANAGER_EMAILS or admin)
+- `/admin/*` = requires `admin` permission (ADMIN_EMAILS only)
 
 **Key Components:**
 - `src/lib/auth.ts` = Neon Auth client (uses same-domain proxy in prod for mobile ITP compatibility)
-- `src/hooks/useAuth.ts` = Auth context with session, user, accessType, signInWithGoogle, signOut
-- `AdminLayout` = auth gate wrapper for `/admin/*` routes
-- `AdminAuthPage` = Google sign-in page at `/admin`
+- `src/hooks/useAuth.ts` = Auth context with session, user, permissions, signInWithGoogle, signOut
+- `src/pages/SignInPage.tsx` = Google sign-in page (shown for unauthenticated users)
+- `src/pages/UnauthorizedPage.tsx` = Shown when user lacks required permission
+- `AdminLayout` = Layout wrapper for `/admin/*` routes
 
 **API Protection:**
 - Frontend passes `x-user-id` and `x-user-email` headers with authenticated requests
-- Backend validates email against allowlist (ADMIN_EMAILS, KUDOS_EMAILS env vars)
-- Frontend fetches access type from `/api/auth` after OAuth callback
-- All write endpoints require admin auth
+- Backend validates email and returns permissions from `/api/auth`
+- All write endpoints require admin permission
 
 **Mobile Proxy:**
 - Production uses `/neon-auth/*` proxy to Neon Auth URL for mobile ITP compatibility

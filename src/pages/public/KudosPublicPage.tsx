@@ -1,32 +1,8 @@
 import { useState, useEffect } from "react";
 import { kudos as kudosApi, type Kudo } from "../../lib/api";
-import { useAuth } from "../../hooks/useAuth";
-import { Button } from "../../components/Button";
 import { formatDateDisplay } from "../../lib/utils";
 
-function UnauthorizedMessage({ onSignOut }: { onSignOut: () => void }) {
-  return (
-    <div className="max-w-md mx-auto mt-16 text-center">
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-red-800 mb-2">
-          Access Denied
-        </h2>
-        <p className="text-red-600 mb-4">
-          Your account is not authorized to view kudos.
-          Please sign in with an authorized Google account.
-        </p>
-        <Button onClick={onSignOut} variant="secondary">
-          Sign Out
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function KudosPublicPage() {
-  const { session, accessType, signInWithGoogle, signOut, loading: authLoading } = useAuth();
-  const isAuthenticated = !!session && (accessType === "admin" || accessType === "kudos");
-
   const [kudosList, setKudosList] = useState<Kudo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,42 +36,6 @@ export function KudosPublicPage() {
   const years = Object.keys(kudosByYear)
     .map(Number)
     .sort((a, b) => b - a);
-
-  // Show loading while checking auth
-  if (authLoading) {
-    return (
-      <div className="max-w-md mx-auto mt-16 text-center">
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    );
-  }
-
-  // Show error if authenticated but not authorized
-  if (session && !accessType) {
-    return <UnauthorizedMessage onSignOut={signOut} />;
-  }
-
-  // Login gate - require authentication to view kudos
-  if (!isAuthenticated) {
-    const handleSignIn = () => {
-      signInWithGoogle("/kudos");
-    };
-
-    return (
-      <div className="max-w-md mx-auto mt-16">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Kudos</h1>
-          <p className="text-gray-600 mt-2">
-            Sign in with your Google account to view kudos.
-          </p>
-        </div>
-
-        <Button onClick={handleSignIn} className="w-full">
-          Continue with Google
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8">
