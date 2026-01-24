@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "generate-redirects": "node scripts/generate-redirects.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate",
