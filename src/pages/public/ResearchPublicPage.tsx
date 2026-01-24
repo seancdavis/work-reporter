@@ -21,8 +21,8 @@ export function ResearchPublicPage() {
       try {
         const data = await research.list();
         setAllItems(data);
-        // Filter out SCD- items for public board display
-        setItems(data.filter((item) => !item.linear_issue_identifier.startsWith("SCD-")));
+        // Show all items on public board (SCD- items will have Linear badge hidden)
+        setItems(data);
       } catch (error) {
         console.error("Failed to fetch research items:", error);
       } finally {
