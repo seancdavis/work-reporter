@@ -62,9 +62,10 @@ export function ResearchAdminPage() {
       setSearching(true);
       try {
         const results = await linear.search(searchQuery);
-        // Filter out issues already on the board
+        // Filter out issues already on the board by both UUID and identifier
         const existingIds = new Set(items.map((i) => i.linear_issue_id));
-        setSearchResults(results.filter((r) => !existingIds.has(r.id)));
+        const existingIdentifiers = new Set(items.map((i) => i.linear_issue_identifier));
+        setSearchResults(results.filter((r) => !existingIds.has(r.id) && !existingIdentifiers.has(r.identifier)));
       } catch (error) {
         console.error("Failed to search issues:", error);
       } finally {
@@ -76,6 +77,15 @@ export function ResearchAdminPage() {
   }, [searchQuery, items]);
 
   const handleAddIssue = async (issue: LinearIssue) => {
+    // Double-check that the issue isn't already on the board
+    const alreadyExists = items.some(
+      (i) => i.linear_issue_id === issue.id || i.linear_issue_identifier === issue.identifier
+    );
+    if (alreadyExists) {
+      alert("This issue is already on the research board.");
+      return;
+    }
+
     setAdding(true);
     try {
       const newItem = await research.add(issue, "ideas");
