@@ -1,7 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, asc } from "drizzle-orm";
-import { requireAuth } from "./_shared/auth";
+import { requireAdmin } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
 
 // Valid columns for the kanban board
@@ -109,9 +109,13 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/research - Add a new research item (from Linear issue)
   if (request.method === "POST" && !itemIdFromPath) {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      console.warn("POST /api/research: Unauthorized access attempt", {
+        userId: request.headers.get("x-user-id"),
+        email: request.headers.get("x-user-email"),
+      });
+      return Response.json({ error: "Admin access required to add research items" }, { status: 401 });
     }
 
     try {
@@ -193,9 +197,14 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/research/:id/notes - Add a note to a research item
   if (request.method === "POST" && itemIdFromPath && isNotesEndpoint) {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      console.warn("POST /api/research/:id/notes: Unauthorized access attempt", {
+        itemId: itemIdFromPath,
+        userId: request.headers.get("x-user-id"),
+        email: request.headers.get("x-user-email"),
+      });
+      return Response.json({ error: "Admin access required to add notes" }, { status: 401 });
     }
 
     try {
@@ -243,9 +252,14 @@ export default async (request: Request, context: Context) => {
 
   // PUT /api/research/:id - Update a research item
   if (request.method === "PUT" && itemIdFromPath && !isNotesEndpoint) {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      console.warn("PUT /api/research/:id: Unauthorized access attempt", {
+        itemId: itemIdFromPath,
+        userId: request.headers.get("x-user-id"),
+        email: request.headers.get("x-user-email"),
+      });
+      return Response.json({ error: "Admin access required to update research items" }, { status: 401 });
     }
 
     try {
@@ -313,9 +327,13 @@ export default async (request: Request, context: Context) => {
 
   // PATCH /api/research - Batch reorder items (kept for backward compatibility)
   if (request.method === "PATCH" && !itemIdFromPath) {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      console.warn("PATCH /api/research: Unauthorized access attempt", {
+        userId: request.headers.get("x-user-id"),
+        email: request.headers.get("x-user-email"),
+      });
+      return Response.json({ error: "Admin access required to reorder items" }, { status: 401 });
     }
 
     try {
@@ -353,9 +371,14 @@ export default async (request: Request, context: Context) => {
 
   // DELETE /api/research/:id - Remove item from board
   if (request.method === "DELETE" && itemIdFromPath && !isNotesEndpoint) {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      console.warn("DELETE /api/research/:id: Unauthorized access attempt", {
+        itemId: itemIdFromPath,
+        userId: request.headers.get("x-user-id"),
+        email: request.headers.get("x-user-email"),
+      });
+      return Response.json({ error: "Admin access required to delete items" }, { status: 401 });
     }
 
     try {
@@ -372,9 +395,15 @@ export default async (request: Request, context: Context) => {
 
   // DELETE /api/research/:id/notes/:noteId - Delete a note
   if (request.method === "DELETE" && itemIdFromPath && isNotesEndpoint && noteIdFromPath) {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      console.warn("DELETE /api/research/:id/notes/:noteId: Unauthorized access attempt", {
+        itemId: itemIdFromPath,
+        noteId: noteIdFromPath,
+        userId: request.headers.get("x-user-id"),
+        email: request.headers.get("x-user-email"),
+      });
+      return Response.json({ error: "Admin access required to delete notes" }, { status: 401 });
     }
 
     try {
