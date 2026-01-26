@@ -1,5 +1,5 @@
 import type { Context, Config } from "@netlify/functions";
-import { requireAuth } from "./_shared/auth";
+import { requireAdmin } from "./_shared/auth";
 import { generateAIResponse } from "./_shared/ai";
 
 export default async (req: Request, context: Context) => {
@@ -7,7 +7,7 @@ export default async (req: Request, context: Context) => {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  const auth = await requireAuth(req, "admin");
+  const auth = await requireAdmin(req);
   if (!auth.authorized) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

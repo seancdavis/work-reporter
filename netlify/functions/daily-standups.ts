@@ -1,7 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, lte, desc } from "drizzle-orm";
-import { requireAuth } from "./_shared/auth";
+import { requireAdmin } from "./_shared/auth";
 import { formatDate, getWeekEnd } from "./_shared/utils";
 import { parseMarkdown } from "./_shared/markdown";
 
@@ -64,7 +64,7 @@ export default async (req: Request, context: Context) => {
 
   // POST - Create or update standup
   if (req.method === "POST") {
-    const auth = await requireAuth(req, "admin");
+    const auth = await requireAdmin(req);
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -149,7 +149,7 @@ export default async (req: Request, context: Context) => {
 
   // DELETE
   if (req.method === "DELETE") {
-    const auth = await requireAuth(req, "admin");
+    const auth = await requireAdmin(req);
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
