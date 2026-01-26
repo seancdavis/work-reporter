@@ -1,7 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, lte, asc, desc } from "drizzle-orm";
-import { requireAuth } from "./_shared/auth";
+import { requireAdmin } from "./_shared/auth";
 import { generateWeeklySummary } from "./_shared/ai";
 import { formatDate, getWeekStart, getWeekEnd } from "./_shared/utils";
 import { parseMarkdown } from "./_shared/markdown";
@@ -52,7 +52,7 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/weekly-reports/generate - Generate AI summary (returns text, doesn't save)
   if (request.method === "POST" && url.pathname.endsWith("/generate")) {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -111,7 +111,7 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/weekly-reports - Save/update a report
   if (request.method === "POST") {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

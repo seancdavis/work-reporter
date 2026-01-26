@@ -1,7 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, desc } from "drizzle-orm";
-import { requireAuth } from "./_shared/auth";
+import { requireAdmin } from "./_shared/auth";
 import { uploadScreenshot, deleteScreenshot } from "./_shared/blobs";
 
 export default async (request: Request, context: Context) => {
@@ -41,7 +41,7 @@ export default async (request: Request, context: Context) => {
 
   // POST /api/kudos - Create a new kudo (requires admin auth)
   if (request.method === "POST") {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -126,7 +126,7 @@ export default async (request: Request, context: Context) => {
 
   // PUT /api/kudos/:id - Update a kudo (requires admin auth)
   if (request.method === "PUT") {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -184,7 +184,7 @@ export default async (request: Request, context: Context) => {
 
   // DELETE /api/kudos?id=123 (requires admin auth)
   if (request.method === "DELETE") {
-    const auth = await requireAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.authorized) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
