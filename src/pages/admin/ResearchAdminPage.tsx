@@ -5,11 +5,13 @@ import { KanbanBoard } from "../../components/KanbanBoard";
 import { ResearchModal } from "../../components/ResearchModal";
 import { Button } from "../../components/Button";
 import { CardLoader } from "../../components/LoadingSpinner";
+import { useToast, ToastContainer } from "../../components/Toast";
 import { cn } from "../../lib/utils";
 
 export function ResearchAdminPage() {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
+  const { toasts, showToast, dismissToast } = useToast();
 
   const [items, setItems] = useState<ResearchItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,12 +31,14 @@ export function ResearchAdminPage() {
         setItems(data);
       } catch (error) {
         console.error("Failed to fetch research items:", error);
+        const message = error instanceof Error ? error.message : "Failed to load research items";
+        showToast("error", message);
       } finally {
         setLoading(false);
       }
     }
     fetchItems();
-  }, []);
+  }, [showToast]);
 
   // Open modal when itemId is in URL
   useEffect(() => {
@@ -68,13 +72,15 @@ export function ResearchAdminPage() {
         setSearchResults(results.filter((r) => !existingIds.has(r.id) && !existingIdentifiers.has(r.identifier)));
       } catch (error) {
         console.error("Failed to search issues:", error);
+        const message = error instanceof Error ? error.message : "Failed to search issues";
+        showToast("error", message);
       } finally {
         setSearching(false);
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, items]);
+  }, [searchQuery, items, showToast]);
 
   const handleAddIssue = async (issue: LinearIssue) => {
     // Double-check that the issue isn't already on the board
@@ -82,7 +88,7 @@ export function ResearchAdminPage() {
       (i) => i.linear_issue_id === issue.id || i.linear_issue_identifier === issue.identifier
     );
     if (alreadyExists) {
-      alert("This issue is already on the research board.");
+      showToast("error", "This issue is already on the research board.");
       return;
     }
 
@@ -93,9 +99,11 @@ export function ResearchAdminPage() {
       setSearchQuery("");
       setSearchResults([]);
       setShowAddModal(false);
+      showToast("success", `Added "${issue.identifier}" to the research board.`);
     } catch (error) {
       console.error("Failed to add issue:", error);
-      alert("Failed to add issue. It may already be on the board.");
+      const message = error instanceof Error ? error.message : "Failed to add issue";
+      showToast("error", message);
     } finally {
       setAdding(false);
     }
@@ -110,6 +118,8 @@ export function ResearchAdminPage() {
       setItems(items.map((i) => (i.id === id ? updated : i)));
     } catch (error) {
       console.error("Failed to update item:", error);
+      const message = error instanceof Error ? error.message : "Failed to update item";
+      showToast("error", message);
       throw error;
     }
   };
@@ -137,8 +147,11 @@ export function ResearchAdminPage() {
       if (selectedItem?.id === id) {
         navigate("/admin/research");
       }
+      showToast("success", "Item removed from the research board.");
     } catch (error) {
       console.error("Failed to delete item:", error);
+      const message = error instanceof Error ? error.message : "Failed to delete item";
+      showToast("error", message);
     }
   };
 
@@ -268,6 +281,9 @@ export function ResearchAdminPage() {
           onUpdate={handleModalUpdate}
         />
       )}
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
