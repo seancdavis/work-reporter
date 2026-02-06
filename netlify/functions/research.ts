@@ -3,7 +3,7 @@ import { db, schema } from "./_shared/db";
 import { eq, asc } from "drizzle-orm";
 import { requireAdmin } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
-import { updateIssueTitle, updateIssueDescription, addComment, updateComment, updateIssueState, getIssueTeamId, getWorkflowStates } from "./_shared/linear";
+import { updateIssueTitle, updateIssueDescription, addComment, updateComment, updateIssueState, getIssueTeamId, getWorkflowStates, getIssuesByIds } from "./_shared/linear";
 import { inArray } from "drizzle-orm";
 
 // Valid columns for the kanban board
@@ -83,7 +83,8 @@ export default async (request: Request, context: Context) => {
   const pathParts = url.pathname.split("/").filter(Boolean);
   // pathParts: ["api", "research"] or ["api", "research", ":id"] or ["api", "research", ":id", "notes"]
 
-  const itemIdFromPath = pathParts.length >= 3 ? parseInt(pathParts[2]) : null;
+  const isSyncEndpoint = pathParts.length >= 3 && pathParts[2] === "sync-to-linear";
+  const itemIdFromPath = pathParts.length >= 3 && !isSyncEndpoint ? parseInt(pathParts[2]) : null;
   const isNotesEndpoint = pathParts.length >= 4 && pathParts[3] === "notes";
   const isDocumentsEndpoint = pathParts.length >= 4 && pathParts[3] === "documents";
   const noteIdFromPath = pathParts.length >= 5 && isNotesEndpoint ? parseInt(pathParts[4]) : null;
@@ -695,6 +696,123 @@ export default async (request: Request, context: Context) => {
     } catch (error) {
       console.error("Error deleting document:", error);
       return Response.json({ error: "Failed to delete document" }, { status: 500 });
+    }
+  }
+
+  // POST /api/research/sync-to-linear - Bulk sync all research items to Linear
+  if (request.method === "POST" && isSyncEndpoint) {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Admin access required for bulk sync" }, { status: 401 });
+    }
+
+    const dryRun = url.searchParams.get("dry_run") === "true";
+
+    try {
+      const items = await db
+        .select()
+        .from(schema.researchItems)
+        .orderBy(asc(schema.researchItems.id));
+
+      const allNotes = await db
+        .select()
+        .from(schema.researchNotes)
+        .orderBy(asc(schema.researchNotes.createdAt));
+
+      const notesByItemId = new Map<number, Array<typeof schema.researchNotes.$inferSelect>>();
+      for (const note of allNotes) {
+        const existing = notesByItemId.get(note.researchItemId) || [];
+        existing.push(note);
+        notesByItemId.set(note.researchItemId, existing);
+      }
+
+      // Fetch current Linear data to compare
+      const linearIssueIds = items.map(i => i.linearIssueId);
+      const linearIssues = await getIssuesByIds(linearIssueIds);
+      const linearMap = new Map(linearIssues.map(i => [i.id, i]));
+
+      const summary = { synced: 0, skipped: 0, errors: 0, details: [] as string[] };
+
+      for (const item of items) {
+        const linearIssue = linearMap.get(item.linearIssueId);
+        const notes = notesByItemId.get(item.id) || [];
+
+        // Sync title if different from Linear
+        if (linearIssue && item.title !== linearIssue.title) {
+          if (dryRun) {
+            summary.details.push(`[DRY RUN] Would sync title for ${item.linearIssueIdentifier}: "${linearIssue.title}" → "${item.title}"`);
+            summary.synced++;
+          } else {
+            await new Promise(r => setTimeout(r, 200));
+            const result = await updateIssueTitle(item.linearIssueId, item.title);
+            if (result.success) {
+              summary.details.push(`Synced title for ${item.linearIssueIdentifier}`);
+              summary.synced++;
+            } else {
+              summary.details.push(`Error syncing title for ${item.linearIssueIdentifier}: ${result.error}`);
+              summary.errors++;
+            }
+          }
+        } else {
+          summary.details.push(`Skipped title for ${item.linearIssueIdentifier} (unchanged)`);
+          summary.skipped++;
+        }
+
+        // Sync description if different from Linear
+        const localDesc = item.description || "";
+        const linearDesc = linearIssue?.description || "";
+        if (linearIssue && localDesc !== linearDesc) {
+          if (dryRun) {
+            summary.details.push(`[DRY RUN] Would sync description for ${item.linearIssueIdentifier}`);
+            summary.synced++;
+          } else {
+            await new Promise(r => setTimeout(r, 200));
+            const result = await updateIssueDescription(item.linearIssueId, localDesc);
+            if (result.success) {
+              summary.details.push(`Synced description for ${item.linearIssueIdentifier}`);
+              summary.synced++;
+            } else {
+              summary.details.push(`Error syncing description for ${item.linearIssueIdentifier}: ${result.error}`);
+              summary.errors++;
+            }
+          }
+        } else {
+          summary.details.push(`Skipped description for ${item.linearIssueIdentifier} (unchanged)`);
+          summary.skipped++;
+        }
+
+        // Sync unlinked notes as comments
+        for (const note of notes) {
+          if (!note.linearCommentId) {
+            if (dryRun) {
+              summary.details.push(`[DRY RUN] Would create comment for note ${note.id} on ${item.linearIssueIdentifier}`);
+              summary.synced++;
+            } else {
+              await new Promise(r => setTimeout(r, 200));
+              const result = await addComment(item.linearIssueId, note.content);
+              if (result.success && result.commentId) {
+                await db
+                  .update(schema.researchNotes)
+                  .set({ linearCommentId: result.commentId })
+                  .where(eq(schema.researchNotes.id, note.id));
+                summary.details.push(`Created comment for note ${note.id} on ${item.linearIssueIdentifier}`);
+                summary.synced++;
+              } else {
+                summary.details.push(`Error creating comment for note ${note.id}: ${result.error}`);
+                summary.errors++;
+              }
+            }
+          } else {
+            summary.details.push(`Skipped note ${note.id} (already linked to comment ${note.linearCommentId})`);
+            summary.skipped++;
+          }
+        }
+      }
+
+      return Response.json(summary);
+    } catch (error) {
+      console.error("Error during bulk sync:", error);
+      return Response.json({ error: "Bulk sync failed" }, { status: 500 });
     }
   }
 
