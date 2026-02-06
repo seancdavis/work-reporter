@@ -3,6 +3,7 @@ import { db, schema } from "./_shared/db";
 import { eq, asc } from "drizzle-orm";
 import { requireAdmin } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
+import { updateIssueTitle, updateIssueDescription } from "./_shared/linear";
 
 // Valid columns for the kanban board
 const VALID_COLUMNS = ["ideas", "exploring", "discussing", "closed"] as const;
@@ -395,6 +396,30 @@ export default async (request: Request, context: Context) => {
 
       if (updated.length === 0) {
         return Response.json({ error: "Research item not found" }, { status: 404 });
+      }
+
+      // Sync title change to Linear
+      if (title !== undefined) {
+        try {
+          const result = await updateIssueTitle(updated[0].linearIssueId, title);
+          if (!result.success) {
+            console.warn(`Failed to sync title to Linear for ${updated[0].linearIssueIdentifier}:`, result.error);
+          }
+        } catch (err) {
+          console.warn(`Error syncing title to Linear for ${updated[0].linearIssueIdentifier}:`, err);
+        }
+      }
+
+      // Sync description change to Linear
+      if (description !== undefined) {
+        try {
+          const result = await updateIssueDescription(updated[0].linearIssueId, description || "");
+          if (!result.success) {
+            console.warn(`Failed to sync description to Linear for ${updated[0].linearIssueIdentifier}:`, result.error);
+          }
+        } catch (err) {
+          console.warn(`Error syncing description to Linear for ${updated[0].linearIssueIdentifier}:`, err);
+        }
       }
 
       // Fetch notes and documents for the item
