@@ -2,13 +2,19 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const AI_MODEL = "claude-haiku-4-5-20251001";
 
+export class AIError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = "AIError";
+  }
+}
+
 export async function generateAIResponse(
   systemPrompt: string,
   userMessage: string,
 ): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("ANTHROPIC_API_KEY is not configured");
-    return "";
+    throw new AIError("ANTHROPIC_API_KEY is not configured");
   }
 
   const anthropic = new Anthropic();
@@ -22,10 +28,16 @@ export async function generateAIResponse(
     });
 
     const content = message.content[0];
-    return content.type === "text" ? content.text : "";
+    if (content.type !== "text" || !content.text) {
+      throw new AIError("AI response was empty or invalid");
+    }
+    return content.text;
   } catch (error) {
+    if (error instanceof AIError) {
+      throw error;
+    }
     console.error("Error calling AI API:", error);
-    return "";
+    throw new AIError("Failed to generate AI response", error);
   }
 }
 

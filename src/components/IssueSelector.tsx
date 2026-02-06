@@ -41,7 +41,7 @@ export function IssueSelector({ selectedIssues, onSelect, disabled, hideLabel, h
   return (
     <div className="space-y-2">
       {!hideLabel && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
           Linked Issues
         </label>
       )}
@@ -52,14 +52,14 @@ export function IssueSelector({ selectedIssues, onSelect, disabled, hideLabel, h
           {selectedIssues.map((issue) => (
             <span
               key={issue.id}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-sm rounded-md"
+              className="inline-flex items-center gap-1 px-2 py-1 bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] text-sm rounded-md"
             >
               <span className="font-medium">{issue.identifier}</span>
               {!disabled && (
                 <button
                   type="button"
                   onClick={() => handleRemove(issue.id)}
-                  className="text-blue-500 hover:text-blue-700"
+                  className="text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)]"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -80,7 +80,7 @@ export function IssueSelector({ selectedIssues, onSelect, disabled, hideLabel, h
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsOpen(true)}
             placeholder="Search issues by ID or title..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)]"
           />
 
           {isOpen && (
@@ -89,11 +89,11 @@ export function IssueSelector({ selectedIssues, onSelect, disabled, hideLabel, h
                 className="fixed inset-0 z-10"
                 onClick={() => setIsOpen(false)}
               />
-              <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-20 mt-1 w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border-primary)] rounded-md shadow-[var(--shadow-lg)] max-h-60 overflow-auto">
                 {loading ? (
-                  <div className="px-4 py-3 text-sm text-gray-500">Loading...</div>
+                  <div className="px-4 py-3 text-sm text-[var(--color-text-tertiary)]">Loading...</div>
                 ) : issues.length === 0 ? (
-                  <div className="px-4 py-3 text-sm text-gray-500">No issues found</div>
+                  <div className="px-4 py-3 text-sm text-[var(--color-text-tertiary)]">No issues found</div>
                 ) : (
                   issues.map((issue) => {
                     const isSelected = selectedIssues.some((i) => i.id === issue.id);
@@ -103,16 +103,16 @@ export function IssueSelector({ selectedIssues, onSelect, disabled, hideLabel, h
                         type="button"
                         onClick={() => handleSelect(issue)}
                         className={cn(
-                          "w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2",
-                          isSelected && "bg-blue-50"
+                          "w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-bg-hover)] flex items-center gap-2",
+                          isSelected && "bg-[var(--color-accent-secondary)]"
                         )}
                       >
                         <span
                           className={cn(
                             "w-4 h-4 rounded border flex items-center justify-center",
                             isSelected
-                              ? "bg-blue-500 border-blue-500 text-white"
-                              : "border-gray-300"
+                              ? "bg-[var(--color-accent-primary)] border-[var(--color-accent-primary)] text-[var(--color-text-inverse)]"
+                              : "border-[var(--color-border-secondary)]"
                           )}
                         >
                           {isSelected && (
@@ -121,11 +121,13 @@ export function IssueSelector({ selectedIssues, onSelect, disabled, hideLabel, h
                             </svg>
                           )}
                         </span>
-                        <span className="font-medium text-gray-900">{issue.identifier}</span>
-                        <span className="text-gray-600 truncate">{issue.title}</span>
+                        <span className="font-medium text-[var(--color-text-primary)]">{issue.identifier}</span>
+                        <span className="text-[var(--color-text-secondary)] truncate">{issue.title}</span>
                         <span className={cn(
                           "ml-auto text-xs px-2 py-0.5 rounded",
-                          issue.state.type === "started" ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600"
+                          issue.state.type === "started"
+                            ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]"
+                            : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]"
                         )}>
                           {issue.state.name}
                         </span>

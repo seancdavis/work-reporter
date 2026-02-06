@@ -113,8 +113,8 @@ export function ReportsAdminPage() {
     <>
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Weekly Reports</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Weekly Reports</h1>
+          <p className="text-[var(--color-text-secondary)] mt-1">
             Summarize your weekly accomplishments for stakeholders.
           </p>
         </div>
@@ -122,7 +122,7 @@ export function ReportsAdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Week selector sidebar */}
           <div className="lg:col-span-1">
-            <h2 className="text-sm font-medium text-gray-700 mb-3">Select Week</h2>
+            <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Week</h2>
             <div className="space-y-1">
               {recentWeeks.map((weekStart) => {
                 const hasReport = reports.some((r) => r.week_start === weekStart);
@@ -134,20 +134,20 @@ export function ReportsAdminPage() {
                     className={cn(
                       "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                       selectedWeek === weekStart
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : "text-gray-700 hover:bg-gray-50",
-                      hasReport && selectedWeek !== weekStart && "text-gray-900"
+                        ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                      hasReport && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <div>{getRelativeWeekLabel(weekStartDate)}</div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-[var(--color-text-tertiary)]">
                           {getWeekRange(weekStartDate)}
                         </div>
                       </div>
                       {hasReport && (
-                        <span className="w-2 h-2 bg-green-500 rounded-full" />
+                        <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
                       )}
                     </div>
                   </button>
@@ -159,18 +159,18 @@ export function ReportsAdminPage() {
           {/* Main content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Summary textarea */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-1">
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-1">
                 Weekly Report: {getRelativeWeekLabel(new Date(selectedWeek + "T00:00:00"))}
               </h2>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-[var(--color-text-tertiary)] mb-6">
                 {getWeekRange(new Date(selectedWeek + "T00:00:00"))}
               </p>
 
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
                       Summary
                     </label>
                     <div className="flex items-center gap-2">
@@ -181,8 +181,8 @@ export function ReportsAdminPage() {
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors",
                             isPreview
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)]"
+                              : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)]"
                           )}
                         >
                           {isPreview ? (
@@ -207,8 +207,8 @@ export function ReportsAdminPage() {
                             className={cn(
                               "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors",
                               generating || dailyData.length === 0
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                                ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] cursor-not-allowed"
+                                : "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] hover:bg-[var(--color-bg-active)]"
                             )}
                           >
                             <Sparkles className="w-3 h-3" />
@@ -225,10 +225,10 @@ export function ReportsAdminPage() {
                   </div>
                   {isPreview ? (
                     <div className="space-y-3">
-                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
                         Weekly Summary
                       </h3>
-                      <div className="pl-4 border-l-2 border-gray-200">
+                      <div className="pl-4 border-l-2 border-[var(--color-border-primary)]">
                         <MarkdownContent html={currentReport?.summary_html || ""} />
                       </div>
                     </div>
@@ -252,24 +252,24 @@ export function ReportsAdminPage() {
 
             {/* Weekly Planning Context */}
             {weeklyPlan && weeklyPlan.planned_accomplishments_html && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">
+              <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+                <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">
                   What Was Planned This Week
                 </h2>
-                <div className="pl-4 border-l-2 border-blue-200">
+                <div className="pl-4 border-l-2 border-[var(--color-accent-primary)]/30">
                   <MarkdownContent html={weeklyPlan.planned_accomplishments_html} />
                 </div>
               </div>
             )}
 
             {/* Daily standups summary */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">
                 Daily Standups
               </h2>
 
               {dailyData.length === 0 ? (
-                <p className="text-gray-500 text-sm">
+                <p className="text-[var(--color-text-tertiary)] text-sm">
                   No daily standups recorded for this week.
                 </p>
               ) : (
@@ -277,18 +277,18 @@ export function ReportsAdminPage() {
                   {dailyData.map((standup) => (
                     <div
                       key={standup.date}
-                      className="border-l-2 border-gray-200 pl-4"
+                      className="border-l-2 border-[var(--color-border-primary)] pl-4"
                     >
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">
+                      <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
                         {formatDateShort(standup.date)}
                       </h3>
 
                       {standup.yesterday_summary_html && (
                         <div className="mb-2">
-                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <span className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
                             What was accomplished
                           </span>
-                          <div className="mt-1 text-sm text-gray-700">
+                          <div className="mt-1 text-sm text-[var(--color-text-secondary)]">
                             <MarkdownContent html={standup.yesterday_summary_html} />
                           </div>
                         </div>
@@ -296,10 +296,10 @@ export function ReportsAdminPage() {
 
                       {standup.today_plan_html && (
                         <div className="mb-2">
-                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <span className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
                             What was planned
                           </span>
-                          <div className="mt-1 text-sm text-gray-600">
+                          <div className="mt-1 text-sm text-[var(--color-text-secondary)]">
                             <MarkdownContent html={standup.today_plan_html} />
                           </div>
                         </div>
@@ -310,7 +310,7 @@ export function ReportsAdminPage() {
                           {standup.linked_issues.map((issue) => (
                             <span
                               key={issue.id}
-                              className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded"
+                              className="text-xs bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] px-2 py-0.5 rounded"
                               title={issue.title}
                             >
                               {issue.identifier}

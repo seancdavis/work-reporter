@@ -50,10 +50,10 @@ export function DailyPublicPage() {
   // Section component for consistent styling
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
         {title}
       </h3>
-      <div className="pl-4 border-l-2 border-gray-200">
+      <div className="pl-4 border-l-2 border-[var(--color-border-primary)]">
         {children}
       </div>
     </div>
@@ -62,8 +62,8 @@ export function DailyPublicPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Daily Standup</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Daily Standup</h1>
+        <p className="text-[var(--color-text-secondary)] mt-1">
           What Sean worked on and what's planned for today.
         </p>
       </div>
@@ -71,7 +71,7 @@ export function DailyPublicPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Date selector sidebar */}
         <div className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-gray-700 mb-3">Select Date</h2>
+          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Date</h2>
           <div className="space-y-1">
             {loading ? (
               // Skeleton for date list while loading
@@ -81,8 +81,8 @@ export function DailyPublicPage() {
                   className="w-full px-3 py-2 rounded-md animate-pulse"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="h-4 bg-gray-200 rounded w-24" />
-                    <div className="w-2 h-2 bg-gray-200 rounded-full" />
+                    <div className="h-4 bg-[var(--color-bg-active)] rounded w-24" />
+                    <div className="w-2 h-2 bg-[var(--color-bg-active)] rounded-full" />
                   </div>
                 </div>
               ))
@@ -96,15 +96,15 @@ export function DailyPublicPage() {
                     className={cn(
                       "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                       selectedDate === date
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : "text-gray-700 hover:bg-gray-50",
-                      hasStandup && selectedDate !== date && "text-gray-900"
+                        ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                      hasStandup && selectedDate !== date && "text-[var(--color-text-primary)]"
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <span>{formatDateShort(date)}</span>
                       {hasStandup && (
-                        <span className="w-2 h-2 bg-green-500 rounded-full" />
+                        <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
                       )}
                     </div>
                   </button>
@@ -119,20 +119,20 @@ export function DailyPublicPage() {
           {loading ? (
             <CardLoader lines={4} />
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
               <div className="flex items-baseline justify-between mb-6">
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
                   {formatDateDisplay(selectedDate)}
                 </h2>
                 {currentStandup && (
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-[var(--color-text-muted)]">
                     Updated {timeAgo(currentStandup.updated_at)}
                   </span>
                 )}
               </div>
 
               {!currentStandup ? (
-                <p className="text-gray-500 text-sm py-4">
+                <p className="text-[var(--color-text-tertiary)] text-sm py-4">
                   No standup recorded for this date.
                 </p>
               ) : (
@@ -165,10 +165,10 @@ export function DailyPublicPage() {
                         {visibleLinkedIssues.map((issue) => (
                           <div
                             key={issue.id}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm bg-blue-50 text-blue-700 border border-blue-100"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] border border-[var(--color-border-primary)]"
                           >
                             <span className="font-medium">{issue.identifier}</span>
-                            <span className="text-blue-600">{issue.title}</span>
+                            <span className="text-[var(--color-accent-primary)]">{issue.title}</span>
                           </div>
                         ))}
                       </div>

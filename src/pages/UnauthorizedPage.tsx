@@ -22,17 +22,17 @@ export function UnauthorizedPage({ requiredPermission }: UnauthorizedPageProps) 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-[var(--color-bg-secondary)] flex items-center justify-center">
       <div className="max-w-md w-full px-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">
+        <div className="bg-[var(--color-danger-bg)] border border-[var(--color-danger)] rounded-lg p-6 text-center">
+          <h2 className="text-lg font-semibold text-[var(--color-danger-text)] mb-2">
             Access Denied
           </h2>
-          <p className="text-red-600 mb-4">
+          <p className="text-[var(--color-danger)] mb-4">
             {getMessage()}
           </p>
           {user && (
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
               Signed in as {user.email}
             </p>
           )}

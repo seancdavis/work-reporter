@@ -208,11 +208,11 @@ export function ResearchModal({
       {/* Modal panel */}
       <div className="flex min-h-full items-start justify-center p-4 sm:p-6">
         <div
-          className="relative w-full max-w-3xl bg-white rounded-lg shadow-xl my-8"
+          className="relative w-full max-w-3xl bg-[var(--color-bg-elevated)] rounded-lg shadow-[var(--shadow-lg)] my-8"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-lg">
+          <div className="sticky top-0 bg-[var(--color-bg-elevated)] border-b border-[var(--color-border-primary)] px-6 py-4 rounded-t-lg">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 {editingTitle && isAdmin ? (
@@ -229,7 +229,7 @@ export function ResearchModal({
                           setEditingTitle(false);
                         }
                       }}
-                      className="flex-1 text-xl font-semibold text-gray-900 px-2 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="flex-1 text-xl font-semibold text-[var(--color-text-primary)] px-2 py-1 border border-[var(--color-border-primary)] rounded-md bg-[var(--color-bg-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)]"
                     />
                     <Button size="sm" onClick={handleSaveTitle} loading={saving}>
                       Save
@@ -248,8 +248,8 @@ export function ResearchModal({
                 ) : (
                   <h2
                     className={cn(
-                      "text-xl font-semibold text-gray-900",
-                      isAdmin && "cursor-pointer hover:text-blue-600"
+                      "text-xl font-semibold text-[var(--color-text-primary)]",
+                      isAdmin && "cursor-pointer hover:text-[var(--color-accent-primary)]"
                     )}
                     onClick={() => isAdmin && setEditingTitle(true)}
                   >
@@ -264,11 +264,11 @@ export function ResearchModal({
                       href={item.linear_issue_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-sm rounded-md hover:bg-blue-100 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] text-sm rounded-md hover:bg-[var(--color-bg-hover)] transition-colors"
                     >
                       {isPrivate && (
                         <svg
-                          className="w-3.5 h-3.5 text-gray-500"
+                          className="w-3.5 h-3.5 text-[var(--color-text-tertiary)]"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -297,7 +297,7 @@ export function ResearchModal({
                       </svg>
                     </a>
                     {item.linear_issue_title !== item.title && (
-                      <span className="text-sm text-gray-500 truncate">
+                      <span className="text-sm text-[var(--color-text-tertiary)] truncate">
                         (Linear: {item.linear_issue_title})
                       </span>
                     )}
@@ -307,7 +307,7 @@ export function ResearchModal({
 
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors p-1"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -326,11 +326,11 @@ export function ResearchModal({
             {/* Description */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-700">Description</h3>
+                <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">Description</h3>
                 {isAdmin && !editingDescription && (
                   <button
                     onClick={() => setEditingDescription(true)}
-                    className="text-sm text-blue-600 hover:text-blue-800"
+                    className="text-sm text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)]"
                   >
                     Edit
                   </button>
@@ -344,7 +344,7 @@ export function ResearchModal({
                     value={descriptionValue}
                     onChange={(e) => setDescriptionValue(e.target.value)}
                     rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)] resize-none"
                     placeholder="Add a description (supports markdown)..."
                   />
                   <div className="flex gap-2">
@@ -366,10 +366,10 @@ export function ResearchModal({
               ) : item.description_html ? (
                 <MarkdownContent
                   html={item.description_html}
-                  className="text-sm text-gray-700"
+                  className="text-sm text-[var(--color-text-secondary)]"
                 />
               ) : (
-                <p className="text-sm text-gray-400 italic">
+                <p className="text-sm text-[var(--color-text-muted)] italic">
                   {isAdmin ? "Click Edit to add a description" : "No description"}
                 </p>
               )}
@@ -379,7 +379,7 @@ export function ResearchModal({
             {showPlannedIssueSection && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-700">
+                  <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">
                     {item.column === "implemented" ? "Implemented As" : "Planned Implementation"}
                   </h3>
                 </div>
@@ -390,10 +390,10 @@ export function ResearchModal({
                       href={item.planned_issue_url!}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 text-sm rounded-md hover:bg-green-100 transition-colors"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--color-success-bg)] text-[var(--color-success-text)] text-sm rounded-md hover:bg-[var(--color-bg-hover)] transition-colors"
                     >
                       <span className="font-medium">{item.planned_issue_identifier}</span>
-                      <span className="text-green-600">{item.planned_issue_title}</span>
+                      <span className="text-[var(--color-success)]">{item.planned_issue_title}</span>
                       <svg
                         className="w-3.5 h-3.5"
                         fill="none"
@@ -411,7 +411,7 @@ export function ResearchModal({
                     {isAdmin && (
                       <button
                         onClick={handleClearPlannedIssue}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        className="text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors"
                         title="Remove linked issue"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,35 +434,35 @@ export function ResearchModal({
                           value={plannedIssueSearch}
                           onChange={(e) => setPlannedIssueSearch(e.target.value)}
                           placeholder="Search for implementation issue..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)]"
                           autoFocus
                         />
                         {searchingPlannedIssue ? (
-                          <div className="text-sm text-gray-500 py-2">Searching...</div>
+                          <div className="text-sm text-[var(--color-text-tertiary)] py-2">Searching...</div>
                         ) : plannedIssueResults.length > 0 ? (
-                          <div className="border border-gray-200 rounded-md max-h-48 overflow-auto">
+                          <div className="border border-[var(--color-border-primary)] rounded-md max-h-48 overflow-auto">
                             {plannedIssueResults.map((issue) => (
                               <button
                                 key={issue.id}
                                 onClick={() => handleSetPlannedIssue(issue)}
-                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bg-hover)] border-b border-[var(--color-border-primary)] last:border-b-0"
                               >
-                                <span className="font-medium text-blue-600">
+                                <span className="font-medium text-[var(--color-accent-primary)]">
                                   {issue.identifier}
                                 </span>
-                                <span className="ml-2 text-gray-700">{issue.title}</span>
+                                <span className="ml-2 text-[var(--color-text-secondary)]">{issue.title}</span>
                               </button>
                             ))}
                           </div>
                         ) : plannedIssueSearch.trim() ? (
-                          <div className="text-sm text-gray-500 py-2">No issues found</div>
+                          <div className="text-sm text-[var(--color-text-tertiary)] py-2">No issues found</div>
                         ) : null}
                         <button
                           onClick={() => {
                             setShowPlannedIssueSearch(false);
                             setPlannedIssueSearch("");
                           }}
-                          className="text-sm text-gray-500 hover:text-gray-700"
+                          className="text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
                         >
                           Cancel
                         </button>
@@ -470,14 +470,14 @@ export function ResearchModal({
                     ) : (
                       <button
                         onClick={() => setShowPlannedIssueSearch(true)}
-                        className="text-sm text-blue-600 hover:text-blue-800"
+                        className="text-sm text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)]"
                       >
                         + Link implementation issue
                       </button>
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400 italic">No implementation linked</p>
+                  <p className="text-sm text-[var(--color-text-muted)] italic">No implementation linked</p>
                 )}
               </div>
             )}
@@ -485,13 +485,13 @@ export function ResearchModal({
             {/* Notes */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-700">
+                <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">
                   Notes ({item.notes.length})
                 </h3>
                 {isAdmin && !addingNote && (
                   <button
                     onClick={() => setAddingNote(true)}
-                    className="text-sm text-blue-600 hover:text-blue-800"
+                    className="text-sm text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)]"
                   >
                     + Add Note
                   </button>
@@ -506,7 +506,7 @@ export function ResearchModal({
                     value={noteValue}
                     onChange={(e) => setNoteValue(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)] resize-none"
                     placeholder="Add a note (supports markdown)..."
                   />
                   <div className="flex gap-2">
@@ -533,16 +533,16 @@ export function ResearchModal({
                   {sortedNotes.map((note) => (
                     <div
                       key={note.id}
-                      className="bg-gray-50 rounded-md p-3 relative group"
+                      className="bg-[var(--color-bg-tertiary)] rounded-md p-3 relative group"
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-[var(--color-text-tertiary)]">
                           {timeAgo(note.created_at)}
                         </span>
                         {isAdmin && (
                           <button
                             onClick={() => handleDeleteNote(note.id)}
-                            className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="text-[var(--color-text-muted)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Delete note"
                           >
                             <svg
@@ -564,10 +564,10 @@ export function ResearchModal({
                       {note.content_html ? (
                         <MarkdownContent
                           html={note.content_html}
-                          className="text-sm text-gray-700"
+                          className="text-sm text-[var(--color-text-secondary)]"
                         />
                       ) : (
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">
                           {note.content}
                         </p>
                       )}
@@ -575,7 +575,7 @@ export function ResearchModal({
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 italic">
+                <p className="text-sm text-[var(--color-text-muted)] italic">
                   {isAdmin ? "Click Add Note to start tracking your research" : "No notes yet"}
                 </p>
               )}
@@ -583,8 +583,8 @@ export function ResearchModal({
           </div>
 
           {/* Footer */}
-          <div className="border-t border-gray-200 px-6 py-3 bg-gray-50 rounded-b-lg">
-            <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="border-t border-[var(--color-border-primary)] px-6 py-3 bg-[var(--color-bg-tertiary)] rounded-b-lg">
+            <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
               <span>Created {timeAgo(item.created_at)}</span>
               <span>Updated {timeAgo(item.updated_at)}</span>
             </div>

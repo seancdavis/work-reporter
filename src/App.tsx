@@ -16,6 +16,7 @@ import { ReportsAdminPage } from "./pages/admin/ReportsAdminPage";
 import { ResearchAdminPage } from "./pages/admin/ResearchAdminPage";
 import { KudosAdminPage } from "./pages/admin/KudosAdminPage";
 import { AuthContext, useAuthProvider, useAuth } from "./hooks/useAuth";
+import { ThemeContext, useThemeProvider } from "./hooks/useTheme";
 
 // Component to handle OAuth callback verifier cleanup
 function OAuthCallbackHandler({ refetch }: { refetch: () => Promise<void> }) {
@@ -105,18 +106,21 @@ function AuthenticatedApp() {
 
 function AppContent() {
   const authValue = useAuthProvider();
+  const themeValue = useThemeProvider();
 
   if (authValue.loading) {
     return <PageLoader message="Loading Work Tracker..." />;
   }
 
   return (
-    <AuthContext.Provider value={authValue}>
-      <BrowserRouter>
-        <OAuthCallbackHandler refetch={authValue.refetch} />
-        <AuthenticatedApp />
-      </BrowserRouter>
-    </AuthContext.Provider>
+    <ThemeContext.Provider value={themeValue}>
+      <AuthContext.Provider value={authValue}>
+        <BrowserRouter>
+          <OAuthCallbackHandler refetch={authValue.refetch} />
+          <AuthenticatedApp />
+        </BrowserRouter>
+      </AuthContext.Provider>
+    </ThemeContext.Provider>
   );
 }
 

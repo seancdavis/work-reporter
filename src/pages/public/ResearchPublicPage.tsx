@@ -72,8 +72,8 @@ export function ResearchPublicPage() {
   return (
     <div className="space-y-6 max-w-full">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Research Board</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Research Board</h1>
+        <p className="text-[var(--color-text-secondary)] mt-1">
           What Sean is actively researching and thinking about.
         </p>
       </div>
@@ -85,7 +85,7 @@ export function ResearchPublicPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="text-gray-500 py-8 text-center">
+        <div className="text-[var(--color-text-tertiary)] py-8 text-center">
           No research items yet.
         </div>
       ) : (

@@ -45,10 +45,10 @@ export function ReportsPublicPage() {
   // Section component for consistent styling
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
         {title}
       </h3>
-      <div className="pl-4 border-l-2 border-gray-200">
+      <div className="pl-4 border-l-2 border-[var(--color-border-primary)]">
         {children}
       </div>
     </div>
@@ -57,8 +57,8 @@ export function ReportsPublicPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Weekly Reports</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Weekly Reports</h1>
+        <p className="text-[var(--color-text-secondary)] mt-1">
           Summaries of weekly accomplishments.
         </p>
       </div>
@@ -66,7 +66,7 @@ export function ReportsPublicPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Week selector sidebar */}
         <div className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-gray-700 mb-3">Select Week</h2>
+          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Week</h2>
           <div className="space-y-1">
             {recentWeeks.map((weekStart) => {
               const hasReport = reports.some((r) => r.week_start === weekStart);
@@ -78,20 +78,20 @@ export function ReportsPublicPage() {
                   className={cn(
                     "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                     selectedWeek === weekStart
-                      ? "bg-blue-50 text-blue-700 font-medium"
-                      : "text-gray-700 hover:bg-gray-50",
-                    hasReport && selectedWeek !== weekStart && "text-gray-900"
+                      ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                    hasReport && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <div>
                       <div>{getRelativeWeekLabel(weekStartDate)}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-[var(--color-text-tertiary)]">
                         {getWeekRange(weekStartDate)}
                       </div>
                     </div>
                     {hasReport && (
-                      <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
                     )}
                   </div>
                 </button>
@@ -103,20 +103,20 @@ export function ReportsPublicPage() {
         {/* Main content */}
         <div className="lg:col-span-3 space-y-6">
           {/* Weekly Summary */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
             <div className="flex items-baseline justify-between mb-6">
-              <h2 className="text-lg font-medium text-gray-900">
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
                 {getRelativeWeekLabel(new Date(selectedWeek + "T00:00:00"))}
               </h2>
               {currentReport && (
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-[var(--color-text-muted)]">
                   Updated {timeAgo(currentReport.updated_at)}
                 </span>
               )}
             </div>
 
             {!currentReport || !currentReport.summary_html ? (
-              <p className="text-gray-500 text-sm py-4">
+              <p className="text-[var(--color-text-tertiary)] text-sm py-4">
                 No summary for this week yet.
               </p>
             ) : (
@@ -128,8 +128,8 @@ export function ReportsPublicPage() {
 
           {/* Daily standups summary */}
           {dailyData.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">
                 Daily Standups
               </h2>
 
@@ -139,18 +139,18 @@ export function ReportsPublicPage() {
                   return (
                     <div
                       key={standup.date}
-                      className="border-l-2 border-gray-200 pl-4"
+                      className="border-l-2 border-[var(--color-border-primary)] pl-4"
                     >
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">
+                      <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
                         {formatDateShort(standup.date)}
                       </h3>
 
                       {standup.yesterday_summary_html && (
                         <div className="mb-2">
-                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <span className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
                             What was accomplished
                           </span>
-                          <div className="mt-1 text-sm text-gray-700">
+                          <div className="mt-1 text-sm text-[var(--color-text-secondary)]">
                             <MarkdownContent html={standup.yesterday_summary_html} />
                           </div>
                         </div>
@@ -161,7 +161,7 @@ export function ReportsPublicPage() {
                           {visibleIssues.map((issue) => (
                             <span
                               key={issue.id}
-                              className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded"
+                              className="text-xs bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] px-2 py-0.5 rounded"
                               title={issue.title}
                             >
                               {issue.identifier}

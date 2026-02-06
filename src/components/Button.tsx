@@ -18,18 +18,25 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
+        // Primary variant
         variant === "primary" &&
-          "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+          "bg-[var(--color-accent-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-accent-primary-hover)] focus:ring-[var(--color-accent-primary)]",
+        // Secondary variant
         variant === "secondary" &&
-          "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-blue-500",
+          "bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:bg-[var(--color-bg-hover)] focus:ring-[var(--color-accent-primary)]",
+        // Danger variant
         variant === "danger" &&
-          "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
+          "bg-[var(--color-danger)] text-[var(--color-text-inverse)] hover:bg-[var(--color-danger-hover)] focus:ring-[var(--color-danger)]",
+        // Ghost variant
         variant === "ghost" &&
-          "text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:ring-gray-500",
+          "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] focus:ring-[var(--color-border-secondary)]",
+        // Sizes
         size === "sm" && "px-3 py-1.5 text-sm",
         size === "md" && "px-4 py-2 text-sm",
         size === "lg" && "px-6 py-3 text-base",
+        // Focus ring offset color for dark mode support
+        "focus:ring-offset-[var(--color-bg-primary)]",
         className
       )}
       disabled={disabled || loading}

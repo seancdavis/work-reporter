@@ -34,7 +34,7 @@ export function AICleanupButton({ field, content, onCleanup, disabled }: AIClean
 
   if (error) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-600">
+      <span className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[var(--color-danger)]">
         <AlertCircle className="w-3.5 h-3.5" />
         {error}
       </span>
@@ -48,7 +48,7 @@ export function AICleanupButton({ field, content, onCleanup, disabled }: AIClean
       disabled={loading || disabled || !content.trim()}
       className={cn(
         "inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md transition-colors",
-        "text-purple-600 hover:text-purple-700 hover:bg-purple-50",
+        "text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)] hover:bg-[var(--color-bg-hover)]",
         "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       )}
       title="Clean up with AI"
