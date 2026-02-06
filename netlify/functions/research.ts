@@ -13,7 +13,11 @@ function isValidColumn(column: string): column is Column {
 }
 
 // Helper to format research item for API response
-function formatResearchItem(item: typeof schema.researchItems.$inferSelect, notes: Array<typeof schema.researchNotes.$inferSelect> = []) {
+function formatResearchItem(
+  item: typeof schema.researchItems.$inferSelect,
+  notes: Array<typeof schema.researchNotes.$inferSelect> = [],
+  documents: Array<typeof schema.researchDocuments.$inferSelect> = [],
+) {
   return {
     id: item.id,
     linear_issue_id: item.linearIssueId,
@@ -39,6 +43,13 @@ function formatResearchItem(item: typeof schema.researchItems.$inferSelect, note
       created_at: note.createdAt,
       updated_at: note.updatedAt,
     })),
+    documents: documents.map(doc => ({
+      id: doc.id,
+      research_item_id: doc.researchItemId,
+      url: doc.url,
+      title: doc.title,
+      created_at: doc.createdAt,
+    })),
     created_at: item.createdAt,
     updated_at: item.updatedAt,
   };
@@ -51,7 +62,9 @@ export default async (request: Request, context: Context) => {
 
   const itemIdFromPath = pathParts.length >= 3 ? parseInt(pathParts[2]) : null;
   const isNotesEndpoint = pathParts.length >= 4 && pathParts[3] === "notes";
-  const noteIdFromPath = pathParts.length >= 5 ? parseInt(pathParts[4]) : null;
+  const isDocumentsEndpoint = pathParts.length >= 4 && pathParts[3] === "documents";
+  const noteIdFromPath = pathParts.length >= 5 && isNotesEndpoint ? parseInt(pathParts[4]) : null;
+  const documentIdFromPath = pathParts.length >= 5 && isDocumentsEndpoint ? parseInt(pathParts[4]) : null;
 
   // GET /api/research - List all research items with notes
   if (request.method === "GET" && !itemIdFromPath) {
@@ -61,11 +74,16 @@ export default async (request: Request, context: Context) => {
         .from(schema.researchItems)
         .orderBy(asc(schema.researchItems.displayOrder));
 
-      // Fetch all notes
+      // Fetch all notes and documents
       const allNotes = await db
         .select()
         .from(schema.researchNotes)
         .orderBy(asc(schema.researchNotes.createdAt));
+
+      const allDocuments = await db
+        .select()
+        .from(schema.researchDocuments)
+        .orderBy(asc(schema.researchDocuments.createdAt));
 
       // Group notes by research item id
       const notesByItemId = new Map<number, Array<typeof schema.researchNotes.$inferSelect>>();
@@ -75,7 +93,15 @@ export default async (request: Request, context: Context) => {
         notesByItemId.set(note.researchItemId, existing);
       }
 
-      const result = items.map((item) => formatResearchItem(item, notesByItemId.get(item.id) || []));
+      // Group documents by research item id
+      const docsByItemId = new Map<number, Array<typeof schema.researchDocuments.$inferSelect>>();
+      for (const doc of allDocuments) {
+        const existing = docsByItemId.get(doc.researchItemId) || [];
+        existing.push(doc);
+        docsByItemId.set(doc.researchItemId, existing);
+      }
+
+      const result = items.map((item) => formatResearchItem(item, notesByItemId.get(item.id) || [], docsByItemId.get(item.id) || []));
 
       return Response.json(result);
     } catch (error) {
@@ -84,8 +110,8 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // GET /api/research/:id - Get single research item with notes
-  if (request.method === "GET" && itemIdFromPath && !isNotesEndpoint) {
+  // GET /api/research/:id - Get single research item with notes and documents
+  if (request.method === "GET" && itemIdFromPath && !isNotesEndpoint && !isDocumentsEndpoint) {
     try {
       const items = await db
         .select()
@@ -103,7 +129,13 @@ export default async (request: Request, context: Context) => {
         .where(eq(schema.researchNotes.researchItemId, itemIdFromPath))
         .orderBy(asc(schema.researchNotes.createdAt));
 
-      return Response.json(formatResearchItem(items[0], notes));
+      const documents = await db
+        .select()
+        .from(schema.researchDocuments)
+        .where(eq(schema.researchDocuments.researchItemId, itemIdFromPath))
+        .orderBy(asc(schema.researchDocuments.createdAt));
+
+      return Response.json(formatResearchItem(items[0], notes, documents));
     } catch (error) {
       console.error("Error fetching research item:", error);
       return Response.json({ error: "Failed to fetch research item" }, { status: 500 });
@@ -299,7 +331,7 @@ export default async (request: Request, context: Context) => {
   }
 
   // PUT /api/research/:id - Update a research item
-  if (request.method === "PUT" && itemIdFromPath && !isNotesEndpoint) {
+  if (request.method === "PUT" && itemIdFromPath && !isNotesEndpoint && !isDocumentsEndpoint) {
     const auth = await requireAdmin(request);
     if (!auth.authorized) {
       console.warn("PUT /api/research/:id: Unauthorized access attempt", {
@@ -359,14 +391,20 @@ export default async (request: Request, context: Context) => {
         return Response.json({ error: "Research item not found" }, { status: 404 });
       }
 
-      // Fetch notes for the item
+      // Fetch notes and documents for the item
       const notes = await db
         .select()
         .from(schema.researchNotes)
         .where(eq(schema.researchNotes.researchItemId, itemIdFromPath))
         .orderBy(asc(schema.researchNotes.createdAt));
 
-      return Response.json(formatResearchItem(updated[0], notes));
+      const documents = await db
+        .select()
+        .from(schema.researchDocuments)
+        .where(eq(schema.researchDocuments.researchItemId, itemIdFromPath))
+        .orderBy(asc(schema.researchDocuments.createdAt));
+
+      return Response.json(formatResearchItem(updated[0], notes, documents));
     } catch (error) {
       console.error("Error updating research item:", error);
       return Response.json({ error: "Failed to update research item" }, { status: 500 });
@@ -463,6 +501,74 @@ export default async (request: Request, context: Context) => {
     } catch (error) {
       console.error("Error deleting note:", error);
       return Response.json({ error: "Failed to delete note" }, { status: 500 });
+    }
+  }
+
+  // POST /api/research/:id/documents - Add a document to a research item
+  if (request.method === "POST" && itemIdFromPath && isDocumentsEndpoint) {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Admin access required to add documents" }, { status: 401 });
+    }
+
+    try {
+      const body = await request.json();
+      const { url, title } = body as { url: string; title: string };
+
+      if (!url?.trim() || !title?.trim()) {
+        return Response.json({ error: "URL and title are required" }, { status: 400 });
+      }
+
+      // Verify the research item exists
+      const items = await db
+        .select()
+        .from(schema.researchItems)
+        .where(eq(schema.researchItems.id, itemIdFromPath))
+        .limit(1);
+
+      if (items.length === 0) {
+        return Response.json({ error: "Research item not found" }, { status: 404 });
+      }
+
+      const inserted = await db
+        .insert(schema.researchDocuments)
+        .values({
+          researchItemId: itemIdFromPath,
+          url: url.trim(),
+          title: title.trim(),
+        })
+        .returning();
+
+      const doc = inserted[0];
+      return Response.json({
+        id: doc.id,
+        research_item_id: doc.researchItemId,
+        url: doc.url,
+        title: doc.title,
+        created_at: doc.createdAt,
+      }, { status: 201 });
+    } catch (error) {
+      console.error("Error creating document:", error);
+      return Response.json({ error: "Failed to create document" }, { status: 500 });
+    }
+  }
+
+  // DELETE /api/research/:id/documents/:documentId - Delete a document
+  if (request.method === "DELETE" && itemIdFromPath && isDocumentsEndpoint && documentIdFromPath) {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Admin access required to delete documents" }, { status: 401 });
+    }
+
+    try {
+      await db
+        .delete(schema.researchDocuments)
+        .where(eq(schema.researchDocuments.id, documentIdFromPath));
+
+      return Response.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      return Response.json({ error: "Failed to delete document" }, { status: 500 });
     }
   }
 

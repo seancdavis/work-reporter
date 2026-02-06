@@ -96,6 +96,14 @@ export interface ResearchNote {
   updated_at: string | null;
 }
 
+export interface ResearchDocument {
+  id: number;
+  research_item_id: number;
+  url: string;
+  title: string;
+  created_at: string;
+}
+
 export interface ResearchItem {
   id: number;
   linear_issue_id: string;
@@ -114,6 +122,7 @@ export interface ResearchItem {
   linear_issue_priority: number | null;
   linear_issue_priority_label: string | null;
   notes: ResearchNote[];
+  documents: ResearchDocument[];
   created_at: string;
   updated_at: string;
 }
@@ -366,6 +375,17 @@ export const research = {
 
   deleteNote: (itemId: number, noteId: number) =>
     fetchApi<{ success: boolean }>(`/research/${itemId}/notes/${noteId}`, {
+      method: "DELETE",
+    }),
+
+  addDocument: (itemId: number, url: string, title: string) =>
+    fetchApi<ResearchDocument>(`/research/${itemId}/documents`, {
+      method: "POST",
+      body: JSON.stringify({ url, title }),
+    }),
+
+  deleteDocument: (itemId: number, documentId: number) =>
+    fetchApi<{ success: boolean }>(`/research/${itemId}/documents/${documentId}`, {
       method: "DELETE",
     }),
 };

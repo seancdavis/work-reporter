@@ -28,6 +28,9 @@ export function ResearchModal({
   const [saving, setSaving] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
+  const [addingDocument, setAddingDocument] = useState(false);
+  const [docUrlValue, setDocUrlValue] = useState("");
+  const [docTitleValue, setDocTitleValue] = useState("");
   const [showPlannedIssueSearch, setShowPlannedIssueSearch] = useState(false);
   const [plannedIssueSearch, setPlannedIssueSearch] = useState("");
   const [plannedIssueResults, setPlannedIssueResults] = useState<LinearIssue[]>([]);
@@ -215,6 +218,38 @@ export function ResearchModal({
       console.error("Failed to clear planned issue:", error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddDocument = async () => {
+    if (!docUrlValue.trim() || !docTitleValue.trim()) return;
+    setSaving(true);
+    try {
+      const newDoc = await research.addDocument(item.id, docUrlValue.trim(), docTitleValue.trim());
+      onUpdate({
+        ...item,
+        documents: [...(item.documents || []), newDoc],
+      });
+      setDocUrlValue("");
+      setDocTitleValue("");
+      setAddingDocument(false);
+    } catch (error) {
+      console.error("Failed to add document:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: number) => {
+    if (!confirm("Remove this document?")) return;
+    try {
+      await research.deleteDocument(item.id, documentId);
+      onUpdate({
+        ...item,
+        documents: (item.documents || []).filter((d) => d.id !== documentId),
+      });
+    } catch (error) {
+      console.error("Failed to delete document:", error);
     }
   };
 
@@ -507,6 +542,99 @@ export function ResearchModal({
                 )}
               </div>
             )}
+
+            {/* Documents */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">
+                  Documents ({(item.documents || []).length})
+                </h3>
+                {isAdmin && !addingDocument && (
+                  <button
+                    onClick={() => setAddingDocument(true)}
+                    className="text-sm text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)]"
+                  >
+                    + Add Document
+                  </button>
+                )}
+              </div>
+
+              {/* Add document form */}
+              {addingDocument && isAdmin && (
+                <div className="mb-4 space-y-2">
+                  <input
+                    type="text"
+                    value={docTitleValue}
+                    onChange={(e) => setDocTitleValue(e.target.value)}
+                    placeholder="Document title"
+                    className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)]"
+                    autoFocus
+                  />
+                  <input
+                    type="url"
+                    value={docUrlValue}
+                    onChange={(e) => setDocUrlValue(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)]"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddDocument} loading={saving}>
+                      Add
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setDocUrlValue("");
+                        setDocTitleValue("");
+                        setAddingDocument(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Documents list */}
+              {(item.documents || []).length > 0 ? (
+                <div className="space-y-1">
+                  {(item.documents || []).map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center gap-2 group"
+                    >
+                      <svg className="w-4 h-4 text-[var(--color-text-muted)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)] hover:underline truncate"
+                      >
+                        {doc.title}
+                      </a>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          className="text-[var(--color-text-muted)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                          title="Remove document"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--color-text-muted)] italic">
+                  {isAdmin ? "Click Add Document to link relevant resources" : "No documents"}
+                </p>
+              )}
+            </div>
 
             {/* Notes */}
             <div>
