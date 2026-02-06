@@ -38,8 +38,7 @@ interface KanbanBoardProps {
 const COLUMNS: { key: ResearchColumn; label: string }[] = [
   { key: "ideas", label: "Ideas" },
   { key: "exploring", label: "Exploring" },
-  { key: "planned", label: "Planned" },
-  { key: "implemented", label: "Implemented" },
+  { key: "discussing", label: "Discussing" },
   { key: "closed", label: "Closed" },
 ];
 

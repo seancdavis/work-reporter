@@ -55,7 +55,9 @@ export const researchItems = pgTable('research_items', {
   title: text('title').notNull(), // Editable title (initially from Linear)
   description: text('description'), // Editable markdown description
   descriptionHtml: text('description_html'), // Pre-rendered HTML
-  column: text('column').notNull().default('ideas'), // ideas, exploring, planned, implemented, closed
+  column: text('column').notNull().default('ideas'), // ideas, exploring, discussing, closed
+  linearIssuePriority: integer('linear_issue_priority'),
+  linearIssuePriorityLabel: text('linear_issue_priority_label'),
   displayOrder: integer('display_order').notNull().default(0),
   plannedIssueId: text('planned_issue_id'), // Linear issue for implementation work
   plannedIssueIdentifier: text('planned_issue_identifier'),
@@ -71,5 +73,15 @@ export const researchNotes = pgTable('research_notes', {
   researchItemId: integer('research_item_id').notNull().references(() => researchItems.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
   contentHtml: text('content_html'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at'),
+});
+
+// Research item documents - linked URLs for each research item
+export const researchDocuments = pgTable('research_documents', {
+  id: serial('id').primaryKey(),
+  researchItemId: integer('research_item_id').notNull().references(() => researchItems.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  title: text('title').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 });

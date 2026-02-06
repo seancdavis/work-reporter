@@ -85,7 +85,7 @@ export interface Kudo {
   updated_at: string;
 }
 
-export type ResearchColumn = "ideas" | "exploring" | "planned" | "implemented" | "closed";
+export type ResearchColumn = "ideas" | "exploring" | "discussing" | "closed";
 
 export interface ResearchNote {
   id: number;
@@ -93,6 +93,7 @@ export interface ResearchNote {
   content: string;
   content_html: string | null;
   created_at: string;
+  updated_at: string | null;
 }
 
 export interface ResearchItem {
@@ -110,6 +111,8 @@ export interface ResearchItem {
   planned_issue_identifier: string | null;
   planned_issue_title: string | null;
   planned_issue_url: string | null;
+  linear_issue_priority: number | null;
+  linear_issue_priority_label: string | null;
   notes: ResearchNote[];
   created_at: string;
   updated_at: string;

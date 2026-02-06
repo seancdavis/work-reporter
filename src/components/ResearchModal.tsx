@@ -36,7 +36,7 @@ export function ResearchModal({
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isPrivate = item.linear_issue_identifier.startsWith("SCD-");
-  const showPlannedIssueSection = item.column === "planned" || item.column === "implemented";
+  const showPlannedIssueSection = item.column === "discussing";
 
   // Focus input when editing starts
   useEffect(() => {
@@ -380,7 +380,7 @@ export function ResearchModal({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">
-                    {item.column === "implemented" ? "Implemented As" : "Planned Implementation"}
+                    Linked Implementation
                   </h3>
                 </div>
 

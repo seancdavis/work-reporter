@@ -5,7 +5,7 @@ import { requireAdmin } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
 
 // Valid columns for the kanban board
-const VALID_COLUMNS = ["ideas", "exploring", "planned", "implemented", "closed"] as const;
+const VALID_COLUMNS = ["ideas", "exploring", "discussing", "closed"] as const;
 type Column = (typeof VALID_COLUMNS)[number];
 
 function isValidColumn(column: string): column is Column {
@@ -29,12 +29,15 @@ function formatResearchItem(item: typeof schema.researchItems.$inferSelect, note
     planned_issue_identifier: item.plannedIssueIdentifier,
     planned_issue_title: item.plannedIssueTitle,
     planned_issue_url: item.plannedIssueUrl,
+    linear_issue_priority: item.linearIssuePriority,
+    linear_issue_priority_label: item.linearIssuePriorityLabel,
     notes: notes.map(note => ({
       id: note.id,
       research_item_id: note.researchItemId,
       content: note.content,
       content_html: note.contentHtml,
       created_at: note.createdAt,
+      updated_at: note.updatedAt,
     })),
     created_at: item.createdAt,
     updated_at: item.updatedAt,
@@ -243,6 +246,7 @@ export default async (request: Request, context: Context) => {
         content: note.content,
         content_html: note.contentHtml,
         created_at: note.createdAt,
+        updated_at: note.updatedAt,
       }, { status: 201 });
     } catch (error) {
       console.error("Error creating note:", error);
