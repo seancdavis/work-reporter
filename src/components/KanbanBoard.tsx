@@ -1,6 +1,12 @@
 import { useState, useRef, useCallback } from "react";
 import { type ResearchItem, type ResearchColumn, research } from "../lib/api";
-import { cn } from "../lib/utils";
+import { cn, timeAgo } from "../lib/utils";
+
+function daysSince(dateStr: string): number {
+  const date = new Date(dateStr);
+  const now = new Date();
+  return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+}
 
 // Strip markdown syntax for plain text preview
 function stripMarkdown(text: string): string {
@@ -187,6 +193,8 @@ export function KanbanBoard({
             <div className="space-y-2 min-h-[200px]" data-column-area>
               {columnItems.map((item, index) => {
                 const isPrivate = item.linear_issue_identifier.startsWith("SCD-");
+                const daysStale = daysSince(item.updated_at);
+                const isStale = daysStale >= 7;
                 const showDropBefore =
                   dropTarget?.column === column.key &&
                   dropTarget.index === index &&
@@ -212,10 +220,11 @@ export function KanbanBoard({
                       onDragEnd={handleDragEnd}
                       onClick={(e) => handleCardClick(e, item)}
                       className={cn(
-                        "bg-[var(--color-bg-elevated)] rounded-md p-3 shadow-[var(--shadow-sm)] border border-[var(--color-border-primary)] relative group",
+                        "bg-[var(--color-bg-elevated)] rounded-md p-3 shadow-[var(--shadow-sm)] border border-[var(--color-border-primary)] relative group transition-opacity",
                         isAdmin && "cursor-grab active:cursor-grabbing",
                         !isAdmin && "cursor-pointer hover:shadow-[var(--shadow-md)] transition-shadow",
-                        draggingId === item.id && "opacity-50"
+                        draggingId === item.id && "opacity-50",
+                        isStale && draggingId !== item.id && "opacity-60"
                       )}
                     >
                       {/* Title */}
@@ -264,6 +273,16 @@ export function KanbanBoard({
                           </span>
                         )}
                       </div>
+
+                      {/* Staleness indicator */}
+                      {daysStale >= 1 && (
+                        <p className={cn(
+                          "text-xs mt-1.5",
+                          isStale ? "text-[var(--color-warning-text)]" : "text-[var(--color-text-muted)]"
+                        )}>
+                          Updated {timeAgo(item.updated_at)}
+                        </p>
+                      )}
 
                       {/* Delete button */}
                       {isAdmin && (
