@@ -32,6 +32,17 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+// Linear priority: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low
+function getPriorityColor(priority: number | null): string | null {
+  switch (priority) {
+    case 1: return "bg-red-500";
+    case 2: return "bg-orange-500";
+    case 3: return "bg-yellow-500";
+    case 4: return "bg-blue-400";
+    default: return null;
+  }
+}
+
 interface KanbanBoardProps {
   items: ResearchItem[];
   onItemsChange: (items: ResearchItem[]) => void;
@@ -244,10 +255,18 @@ export function KanbanBoard({
                         isStale && draggingId !== item.id && "opacity-60"
                       )}
                     >
-                      {/* Title */}
-                      <p className="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2 hover:text-[var(--color-accent-primary)]">
-                        {item.title}
-                      </p>
+                      {/* Title with priority indicator */}
+                      <div className="flex items-start gap-1.5">
+                        {getPriorityColor(item.linear_issue_priority) && (
+                          <span
+                            className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${getPriorityColor(item.linear_issue_priority)}`}
+                            title={item.linear_issue_priority_label || undefined}
+                          />
+                        )}
+                        <p className="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2 hover:text-[var(--color-accent-primary)]">
+                          {item.title}
+                        </p>
+                      </div>
 
                       {/* Description preview */}
                       {item.description && (

@@ -331,6 +331,8 @@ export const research = {
         linear_issue_title: issue.title,
         linear_issue_url: issue.url,
         linear_issue_description: issue.description,
+        linear_issue_priority: issue.priority,
+        linear_issue_priority_label: issue.priorityLabel,
         column,
       }),
     }),

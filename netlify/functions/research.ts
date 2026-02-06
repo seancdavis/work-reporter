@@ -161,6 +161,8 @@ export default async (request: Request, context: Context) => {
         linear_issue_title,
         linear_issue_url,
         linear_issue_description,
+        linear_issue_priority,
+        linear_issue_priority_label,
         title,
         description,
         column = "ideas",
@@ -170,6 +172,8 @@ export default async (request: Request, context: Context) => {
         linear_issue_title: string;
         linear_issue_url: string;
         linear_issue_description?: string;
+        linear_issue_priority?: number;
+        linear_issue_priority_label?: string;
         title?: string;
         description?: string;
         column?: string;
@@ -213,6 +217,8 @@ export default async (request: Request, context: Context) => {
           linearIssueIdentifier: linear_issue_identifier,
           linearIssueTitle: linear_issue_title,
           linearIssueUrl: linear_issue_url,
+          linearIssuePriority: linear_issue_priority ?? null,
+          linearIssuePriorityLabel: linear_issue_priority_label ?? null,
           title: finalTitle,
           description: finalDescription,
           descriptionHtml: parseMarkdown(finalDescription),
