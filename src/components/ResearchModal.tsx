@@ -386,17 +386,7 @@ export function ResearchModal({
           <div className="px-6 py-4 space-y-6">
             {/* Description */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">Description</h3>
-                {isAdmin && !editingDescription && (
-                  <button
-                    onClick={() => setEditingDescription(true)}
-                    className="text-sm text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)]"
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
+              <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2">Description</h3>
 
               {editingDescription && isAdmin ? (
                 <div className="space-y-2">
@@ -425,13 +415,24 @@ export function ResearchModal({
                   </div>
                 </div>
               ) : item.description_html ? (
-                <MarkdownContent
-                  html={item.description_html}
-                  className="text-sm text-[var(--color-text-secondary)]"
-                />
+                <div
+                  className={cn(isAdmin && "cursor-pointer hover:bg-[var(--color-bg-hover)] rounded-md p-1 -m-1 transition-colors")}
+                  onClick={() => isAdmin && setEditingDescription(true)}
+                >
+                  <MarkdownContent
+                    html={item.description_html}
+                    className="text-sm text-[var(--color-text-secondary)]"
+                  />
+                </div>
               ) : (
-                <p className="text-sm text-[var(--color-text-muted)] italic">
-                  {isAdmin ? "Click Edit to add a description" : "No description"}
+                <p
+                  className={cn(
+                    "text-sm text-[var(--color-text-muted)] italic",
+                    isAdmin && "cursor-pointer hover:text-[var(--color-accent-primary)]"
+                  )}
+                  onClick={() => isAdmin && setEditingDescription(true)}
+                >
+                  {isAdmin ? "Click to add a description" : "No description"}
                 </p>
               )}
             </div>
