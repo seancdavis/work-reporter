@@ -10,11 +10,13 @@ import { DailyPublicPage } from "./pages/public/DailyPublicPage";
 import { WeeklyPublicPage } from "./pages/public/WeeklyPublicPage";
 import { ReportsPublicPage } from "./pages/public/ReportsPublicPage";
 import { ResearchPublicPage } from "./pages/public/ResearchPublicPage";
+import { ImpactPublicPage } from "./pages/public/ImpactPublicPage";
 import { KudosPublicPage } from "./pages/public/KudosPublicPage";
 import { DailyAdminPage } from "./pages/admin/DailyAdminPage";
 import { WeeklyAdminPage } from "./pages/admin/WeeklyAdminPage";
 import { ReportsAdminPage } from "./pages/admin/ReportsAdminPage";
 import { ResearchAdminPage } from "./pages/admin/ResearchAdminPage";
+import { ImpactAdminPage } from "./pages/admin/ImpactAdminPage";
 import { KudosAdminPage } from "./pages/admin/KudosAdminPage";
 import { AuthContext, useAuthProvider, useAuth } from "./hooks/useAuth";
 import { ThemeContext, useThemeProvider } from "./hooks/useTheme";
@@ -91,6 +93,8 @@ function AuthenticatedApp() {
         <Route path="/reports/:week" element={<RequireRead><ReportsPublicPage /></RequireRead>} />
         <Route path="/research" element={<RequireRead><ResearchPublicPage /></RequireRead>} />
         <Route path="/research/:itemId" element={<RequireRead><ResearchPublicPage /></RequireRead>} />
+        <Route path="/impact" element={<RequireRead><ImpactPublicPage /></RequireRead>} />
+        <Route path="/impact/:itemId" element={<RequireRead><ImpactPublicPage /></RequireRead>} />
         <Route path="/kudos" element={<RequireKudos><KudosPublicPage /></RequireKudos>} />
       </Route>
 
@@ -105,6 +109,8 @@ function AuthenticatedApp() {
         <Route path="/admin/reports/:week" element={<ReportsAdminPage />} />
         <Route path="/admin/research" element={<ResearchAdminPage />} />
         <Route path="/admin/research/:itemId" element={<ResearchAdminPage />} />
+        <Route path="/admin/impact" element={<ImpactAdminPage />} />
+        <Route path="/admin/impact/:itemId" element={<ImpactAdminPage />} />
         <Route path="/admin/kudos" element={<KudosAdminPage />} />
       </Route>
 

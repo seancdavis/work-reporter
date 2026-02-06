@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { weeklyReports, dailyStandups, type WeeklyReport, type DailyStandup } from "../../lib/api";
+import { weeklyReports, type WeeklyReport } from "../../lib/api";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { CardLoader } from "../../components/LoadingSpinner";
-import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn, timeAgo } from "../../lib/utils";
+import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, cn, timeAgo } from "../../lib/utils";
 
 export function ReportsPublicPage() {
   const { week: weekParam } = useParams<{ week?: string }>();
   const navigate = useNavigate();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
-  const [dailyData, setDailyData] = useState<DailyStandup[]>([]);
   const [loading, setLoading] = useState(true);
 
   const selectedWeek = weekParam || formatDate(getWeekStart());
@@ -21,17 +20,13 @@ export function ReportsPublicPage() {
     }
   }, [weekParam, selectedWeek, navigate]);
 
-  // Fetch reports and daily standups
+  // Fetch reports
   useEffect(() => {
     async function fetch() {
       setLoading(true);
       try {
-        const [reportsData, dailyDataResult] = await Promise.all([
-          weeklyReports.list(),
-          dailyStandups.list({ week: selectedWeek }),
-        ]);
+        const reportsData = await weeklyReports.list();
         setReports(reportsData);
-        setDailyData(dailyDataResult);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -53,6 +48,8 @@ export function ReportsPublicPage() {
   // Filter linked issues for public view (hide SCD- prefixed issues)
   const filterIssues = (issues: Array<{ id: string; identifier: string; title: string }>) =>
     issues.filter((issue) => !issue.identifier.startsWith("SCD-"));
+
+  const visibleLinkedIssues = filterIssues(currentReport?.linked_issues || []);
 
   // Section component for consistent styling
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -143,53 +140,26 @@ export function ReportsPublicPage() {
             )}
           </div>
 
-          {/* Daily standups summary */}
-          {dailyData.length > 0 && (
+          {/* Linked Issues */}
+          {visibleLinkedIssues.length > 0 && (
             <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
-              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">
-                Daily Standups
-              </h2>
-
-              <div className="space-y-6">
-                {dailyData.map((standup) => {
-                  const visibleIssues = filterIssues(standup.linked_issues);
-                  return (
+              <Section title="Linked Issues">
+                <div className="space-y-2">
+                  {visibleLinkedIssues.map((issue) => (
                     <div
-                      key={standup.date}
-                      className="border-l-2 border-[var(--color-border-primary)] pl-4"
+                      key={issue.id}
+                      className="flex items-center gap-2 text-sm"
                     >
-                      <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                        {formatDateShort(standup.date)}
-                      </h3>
-
-                      {standup.yesterday_summary_html && (
-                        <div className="mb-2">
-                          <span className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
-                            What was accomplished
-                          </span>
-                          <div className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                            <MarkdownContent html={standup.yesterday_summary_html} />
-                          </div>
-                        </div>
-                      )}
-
-                      {visibleIssues.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {visibleIssues.map((issue) => (
-                            <span
-                              key={issue.id}
-                              className="text-xs bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] px-2 py-0.5 rounded"
-                              title={issue.title}
-                            >
-                              {issue.identifier}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <span className="font-medium text-[var(--color-accent-text)] bg-[var(--color-accent-secondary)] px-2 py-0.5 rounded whitespace-nowrap">
+                        {issue.identifier}
+                      </span>
+                      <span className="text-[var(--color-text-secondary)] truncate">
+                        {issue.title}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              </Section>
             </div>
           )}
           </>

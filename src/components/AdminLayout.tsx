@@ -8,6 +8,7 @@ const adminNavItems = [
   { path: "/admin/weekly", label: "Weekly" },
   { path: "/admin/reports", label: "Reports" },
   { path: "/admin/research", label: "Research" },
+  { path: "/admin/impact", label: "Impact" },
   { path: "/admin/kudos", label: "Kudos" },
 ];
 

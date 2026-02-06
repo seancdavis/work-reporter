@@ -69,6 +69,7 @@ export interface WeeklyReport {
   week_start: string;
   summary: string | null;
   summary_html: string | null;
+  linked_issues: Array<{ id: string; identifier: string; title: string }>;
   created_at: string;
   updated_at: string;
 }
@@ -229,6 +230,7 @@ export const weeklyReports = {
   save: (data: {
     week_start: string;
     summary?: string;
+    linked_issues?: Array<{ id: string; identifier: string; title: string }>;
   }) =>
     fetchApi<WeeklyReport>("/weekly-reports", {
       method: "POST",
@@ -389,6 +391,108 @@ export const research = {
 
   deleteDocument: (itemId: number, documentId: number) =>
     fetchApi<{ success: boolean }>(`/research/${itemId}/documents/${documentId}`, {
+      method: "DELETE",
+    }),
+};
+
+// Impact types
+export interface ImpactNote {
+  id: number;
+  impact_item_id: number;
+  content: string;
+  content_html: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ImpactLink {
+  id: number;
+  impact_item_id: number;
+  url: string;
+  label: string;
+  created_at: string;
+}
+
+export interface ImpactItem {
+  id: number;
+  title: string;
+  description: string | null;
+  description_html: string | null;
+  shipped_date: string;
+  linear_issue_id: string | null;
+  linear_issue_identifier: string | null;
+  linear_issue_title: string | null;
+  linear_issue_url: string | null;
+  notes: ImpactNote[];
+  links: ImpactLink[];
+  created_at: string;
+  updated_at: string;
+}
+
+// Impact API
+export const impact = {
+  list: () => fetchApi<ImpactItem[]>("/impact"),
+
+  get: (id: number) => fetchApi<ImpactItem>(`/impact/${id}`),
+
+  create: (data: {
+    title: string;
+    description?: string;
+    shipped_date: string;
+    linear_issue_id?: string;
+    linear_issue_identifier?: string;
+    linear_issue_title?: string;
+    linear_issue_url?: string;
+  }) =>
+    fetchApi<ImpactItem>("/impact", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: number, data: {
+    title?: string;
+    description?: string;
+    shipped_date?: string;
+    linear_issue_id?: string | null;
+    linear_issue_identifier?: string | null;
+    linear_issue_title?: string | null;
+    linear_issue_url?: string | null;
+  }) =>
+    fetchApi<ImpactItem>(`/impact/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: number) =>
+    fetchApi<{ success: boolean }>(`/impact/${id}`, {
+      method: "DELETE",
+    }),
+
+  addNote: (itemId: number, content: string) =>
+    fetchApi<ImpactNote>(`/impact/${itemId}/notes`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+
+  updateNote: (itemId: number, noteId: number, content: string) =>
+    fetchApi<ImpactNote>(`/impact/${itemId}/notes/${noteId}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+
+  deleteNote: (itemId: number, noteId: number) =>
+    fetchApi<{ success: boolean }>(`/impact/${itemId}/notes/${noteId}`, {
+      method: "DELETE",
+    }),
+
+  addLink: (itemId: number, url: string, label: string) =>
+    fetchApi<ImpactLink>(`/impact/${itemId}/links`, {
+      method: "POST",
+      body: JSON.stringify({ url, label }),
+    }),
+
+  deleteLink: (itemId: number, linkId: number) =>
+    fetchApi<{ success: boolean }>(`/impact/${itemId}/links/${linkId}`, {
       method: "DELETE",
     }),
 };

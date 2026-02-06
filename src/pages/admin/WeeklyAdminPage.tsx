@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Copy, Eye, Edit3, X } from "lucide-react";
+import { Copy, Eye, Edit3, X, ChevronDown, ChevronUp } from "lucide-react";
 import { weeklyStandups, dailyStandups, type WeeklyStandup, type DailyStandup } from "../../lib/api";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/TextArea";
@@ -37,6 +37,7 @@ export function WeeklyAdminPage() {
   const [linkedIssues, setLinkedIssues] = useState<
     Array<{ id: string; identifier: string; title: string }>
   >([]);
+  const [showCopyPreview, setShowCopyPreview] = useState(false);
 
   // Fetch recent weekly standups
   useEffect(() => {
@@ -85,6 +86,7 @@ export function WeeklyAdminPage() {
     const standup = standups.find((s) => s.week_start === selectedWeek);
     setLinkedIssues(standup?.linked_issues || []);
     setIsPreview(false);
+    setShowCopyPreview(false);
   }, [selectedWeek, standups]);
 
   const handleSave = async () => {
@@ -286,14 +288,55 @@ export function WeeklyAdminPage() {
                     {hasLastWeekIssues && (
                       <button
                         type="button"
-                        onClick={copyIssuesFromLastWeek}
+                        onClick={() => setShowCopyPreview(!showCopyPreview)}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)] transition-colors"
                       >
                         <Copy className="w-3 h-3" />
-                        Copy from last week
+                        Copy issues from last week's standups
+                        {showCopyPreview ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
                     )}
                   </div>
+
+                  {showCopyPreview && hasLastWeekIssues && (() => {
+                    const existingIds = new Set(linkedIssues.map((i) => i.id));
+                    const newIssues = lastWeekIssues.filter((i) => !existingIds.has(i.id));
+                    return (
+                      <div className="mb-3 p-3 rounded-md border border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)]">
+                        <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">
+                          {newIssues.length === 0
+                            ? "All issues from last week are already linked."
+                            : `${newIssues.length} issue${newIssues.length === 1 ? "" : "s"} will be added:`}
+                        </p>
+                        {newIssues.length > 0 && (
+                          <>
+                            <div className="space-y-1 mb-3">
+                              {newIssues.map((issue) => (
+                                <div key={issue.id} className="flex items-center gap-2 text-sm">
+                                  <span className="font-medium text-[var(--color-accent-text)] bg-[var(--color-accent-secondary)] px-1.5 py-0.5 rounded text-xs whitespace-nowrap">
+                                    {issue.identifier}
+                                  </span>
+                                  <span className="text-[var(--color-text-secondary)] truncate">
+                                    {issue.title}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                copyIssuesFromLastWeek();
+                                setShowCopyPreview(false);
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-[var(--color-accent-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-accent-primary-hover)] transition-colors"
+                            >
+                              Add {newIssues.length} issue{newIssues.length === 1 ? "" : "s"}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <IssueSelector
                     selectedIssues={linkedIssues}

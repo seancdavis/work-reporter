@@ -8,6 +8,7 @@ const baseNavItems = [
   { path: "/weekly", label: "Weekly" },
   { path: "/reports", label: "Reports" },
   { path: "/research", label: "Research" },
+  { path: "/impact", label: "Impact" },
 ];
 
 export function Layout() {

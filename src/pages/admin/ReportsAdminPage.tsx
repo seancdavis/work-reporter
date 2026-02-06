@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Eye, Edit3, Sparkles } from "lucide-react";
+import { Eye, Edit3, Sparkles, Download, X } from "lucide-react";
 import { weeklyReports, dailyStandups, weeklyStandups, type WeeklyReport, type DailyStandup, type WeeklyStandup } from "../../lib/api";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/TextArea";
+import { IssueSelector } from "../../components/IssueSelector";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { AICleanupButton } from "../../components/AICleanupButton";
 import { CardLoader } from "../../components/LoadingSpinner";
@@ -33,6 +34,11 @@ export function ReportsAdminPage() {
 
   // Preview mode
   const [isPreview, setIsPreview] = useState(false);
+
+  // Linked issues state
+  const [linkedIssues, setLinkedIssues] = useState<
+    Array<{ id: string; identifier: string; title: string }>
+  >([]);
 
   // Fetch reports, daily standups, and weekly planning
   useEffect(() => {
@@ -64,10 +70,12 @@ export function ReportsAdminPage() {
     savedValue: currentReport?.summary || "",
   });
 
-  // Reset preview mode when changing weeks
+  // Reset preview mode and load linked issues when changing weeks
   useEffect(() => {
     setIsPreview(false);
-  }, [selectedWeek]);
+    const report = reports.find((r) => r.week_start === selectedWeek);
+    setLinkedIssues(report?.linked_issues || []);
+  }, [selectedWeek, reports]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -75,6 +83,7 @@ export function ReportsAdminPage() {
       const saved = await weeklyReports.save({
         week_start: selectedWeek,
         summary: summaryDraft.draftValue || undefined,
+        linked_issues: linkedIssues,
       });
 
       setReports((prev) => {
@@ -109,6 +118,32 @@ export function ReportsAdminPage() {
       showToast("error", "Failed to generate report. Make sure you have daily standups for this week.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const removeIssue = (issueId: string) => {
+    setLinkedIssues(linkedIssues.filter((i) => i.id !== issueId));
+  };
+
+  // Get unique issues from this week's daily standups
+  const getStandupIssues = () => {
+    const issueMap = new Map<string, { id: string; identifier: string; title: string }>();
+    for (const standup of dailyData) {
+      for (const issue of standup.linked_issues || []) {
+        if (!issueMap.has(issue.id)) {
+          issueMap.set(issue.id, issue);
+        }
+      }
+    }
+    return Array.from(issueMap.values());
+  };
+
+  const pullIssuesFromStandups = () => {
+    const standupIssues = getStandupIssues();
+    if (standupIssues.length > 0) {
+      const existingIds = new Set(linkedIssues.map((i) => i.id));
+      const newIssues = standupIssues.filter((i) => !existingIds.has(i.id));
+      setLinkedIssues([...linkedIssues, ...newIssues]);
     }
   };
 
@@ -270,6 +305,59 @@ export function ReportsAdminPage() {
                   </Button>
                 </div>
               </div>
+            </div>
+
+            {/* Linked Issues */}
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
+                  Linked Issues
+                </h2>
+                {dailyData.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={pullIssuesFromStandups}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)] transition-colors"
+                  >
+                    <Download className="w-3 h-3" />
+                    Pull from standups
+                  </button>
+                )}
+              </div>
+
+              <IssueSelector
+                selectedIssues={linkedIssues}
+                onSelect={setLinkedIssues}
+                hideLabel
+                hideSelectedDisplay
+              />
+
+              {linkedIssues.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {linkedIssues.map((issue) => (
+                    <div
+                      key={issue.id}
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border bg-[var(--color-accent-secondary)] border-[var(--color-border-primary)]"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium text-sm whitespace-nowrap text-[var(--color-accent-text)]">
+                          {issue.identifier}
+                        </span>
+                        <span className="text-sm truncate text-[var(--color-accent-primary)]">
+                          {issue.title}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeIssue(issue.id)}
+                        className="flex-shrink-0 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Weekly Planning Context */}
