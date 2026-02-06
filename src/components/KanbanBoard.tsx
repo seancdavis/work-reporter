@@ -35,10 +35,10 @@ function stripMarkdown(text: string): string {
 // Linear priority: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low
 function getPriorityColor(priority: number | null): string | null {
   switch (priority) {
-    case 1: return "bg-red-500";
-    case 2: return "bg-orange-500";
-    case 3: return "bg-yellow-500";
-    case 4: return "bg-blue-400";
+    case 1: return "bg-[var(--color-priority-urgent)]";
+    case 2: return "bg-[var(--color-priority-high)]";
+    case 3: return "bg-[var(--color-priority-medium)]";
+    case 4: return "bg-[var(--color-priority-low)]";
     default: return null;
   }
 }

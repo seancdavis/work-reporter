@@ -41,6 +41,12 @@
   --color-warning-bg: #fef3c7;
   --color-warning-text: #92400e;
 
+  /* Priority indicators (Linear-style) */
+  --color-priority-urgent: #ef4444;
+  --color-priority-high: #f97316;
+  --color-priority-medium: #eab308;
+  --color-priority-low: #60a5fa;
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -106,6 +112,12 @@
   --color-warning-bg: #2a2210;
   --color-warning-text: #fcd34d;
 
+  /* Priority indicators - slightly brighter for dark backgrounds */
+  --color-priority-urgent: #f87171;
+  --color-priority-high: #fb923c;
+  --color-priority-medium: #facc15;
+  --color-priority-low: #7dd3fc;
+
   /* Dark mode shadows - subtle, not heavy */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
   --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);
@@ -154,6 +166,12 @@
     --color-warning: #fbbf24;
     --color-warning-bg: #2a2210;
     --color-warning-text: #fcd34d;
+
+    /* Priority indicators - slightly brighter for dark backgrounds */
+    --color-priority-urgent: #f87171;
+    --color-priority-high: #fb923c;
+    --color-priority-medium: #facc15;
+    --color-priority-low: #7dd3fc;
 
     /* Dark mode shadows - subtle, not heavy */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
