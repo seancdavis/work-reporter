@@ -161,6 +161,193 @@ export async function getIssuesByIds(issueIds: string[]): Promise<LinearIssue[]>
   }
 }
 
+export interface WorkflowState {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface MutationResult {
+  success: boolean;
+  data?: Record<string, unknown>;
+  error?: string;
+}
+
+async function linearMutation(
+  query: string,
+  variables: Record<string, unknown> = {},
+): Promise<MutationResult> {
+  const apiKey = Netlify.env.get("LINEAR_API_KEY");
+  if (!apiKey) {
+    return { success: false, error: "LINEAR_API_KEY not configured" };
+  }
+
+  try {
+    const response = await fetch(LINEAR_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: apiKey,
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Linear API error:", response.status, text);
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    const data = await response.json();
+    if (data.errors) {
+      console.error("Linear GraphQL errors:", data.errors);
+      return { success: false, error: data.errors[0]?.message || "GraphQL error" };
+    }
+
+    return { success: true, data: data.data };
+  } catch (error) {
+    console.error("Linear mutation error:", error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function updateIssueTitle(issueId: string, title: string): Promise<MutationResult> {
+  return linearMutation(
+    `mutation UpdateIssue($id: String!, $title: String!) {
+      issueUpdate(id: $id, input: { title: $title }) {
+        success
+      }
+    }`,
+    { id: issueId, title },
+  );
+}
+
+export async function updateIssueDescription(issueId: string, description: string): Promise<MutationResult> {
+  return linearMutation(
+    `mutation UpdateIssue($id: String!, $description: String!) {
+      issueUpdate(id: $id, input: { description: $description }) {
+        success
+      }
+    }`,
+    { id: issueId, description },
+  );
+}
+
+export async function updateIssueState(issueId: string, stateId: string): Promise<MutationResult> {
+  return linearMutation(
+    `mutation UpdateIssue($id: String!, $stateId: String!) {
+      issueUpdate(id: $id, input: { stateId: $stateId }) {
+        success
+      }
+    }`,
+    { id: issueId, stateId },
+  );
+}
+
+export async function addComment(issueId: string, body: string): Promise<{ success: boolean; commentId?: string; error?: string }> {
+  const result = await linearMutation(
+    `mutation CreateComment($issueId: String!, $body: String!) {
+      commentCreate(input: { issueId: $issueId, body: $body }) {
+        success
+        comment {
+          id
+        }
+      }
+    }`,
+    { issueId, body },
+  );
+
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+
+  const commentId = (result.data?.commentCreate as { comment?: { id: string } })?.comment?.id;
+  return { success: true, commentId };
+}
+
+export async function updateComment(commentId: string, body: string): Promise<MutationResult> {
+  return linearMutation(
+    `mutation UpdateComment($id: String!, $body: String!) {
+      commentUpdate(id: $id, input: { body: $body }) {
+        success
+      }
+    }`,
+    { id: commentId, body },
+  );
+}
+
+export async function getWorkflowStates(teamId: string): Promise<WorkflowState[]> {
+  const apiKey = Netlify.env.get("LINEAR_API_KEY");
+  if (!apiKey) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(LINEAR_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: apiKey,
+      },
+      body: JSON.stringify({
+        query: `query TeamStates($teamId: String!) {
+          team(id: $teamId) {
+            states {
+              nodes {
+                id
+                name
+                type
+              }
+            }
+          }
+        }`,
+        variables: { teamId },
+      }),
+    });
+
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (data.errors) return [];
+    return data.data?.team?.states?.nodes || [];
+  } catch (error) {
+    console.error("Error fetching workflow states:", error);
+    return [];
+  }
+}
+
+export async function getIssueTeamId(issueId: string): Promise<string | null> {
+  const apiKey = Netlify.env.get("LINEAR_API_KEY");
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch(LINEAR_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: apiKey,
+      },
+      body: JSON.stringify({
+        query: `query IssueTeam($id: String!) {
+          issue(id: $id) {
+            team {
+              id
+            }
+          }
+        }`,
+        variables: { id: issueId },
+      }),
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.errors) return null;
+    return data.data?.issue?.team?.id || null;
+  } catch (error) {
+    console.error("Error fetching issue team:", error);
+    return null;
+  }
+}
+
 // Search issues by identifier (e.g., "ENG-123") or title
 export async function searchIssues(searchTerm: string): Promise<LinearIssue[]> {
   const apiKey = Netlify.env.get("LINEAR_API_KEY");
