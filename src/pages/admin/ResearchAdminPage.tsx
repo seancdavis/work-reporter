@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { research, linear, type ResearchItem, type ResearchColumn, type LinearIssue } from "../../lib/api";
 import { KanbanBoard } from "../../components/KanbanBoard";
 import { ResearchModal } from "../../components/ResearchModal";
+import { ClosedArchiveModal } from "../../components/ClosedArchiveModal";
 import { Button } from "../../components/Button";
 import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
@@ -21,6 +22,7 @@ export function ResearchAdminPage() {
   const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ResearchItem | null>(null);
+  const [showClosedArchive, setShowClosedArchive] = useState(false);
 
   // Fetch research items
   useEffect(() => {
@@ -155,6 +157,18 @@ export function ResearchAdminPage() {
     }
   };
 
+  const handleReopenItem = async (item: ResearchItem, targetColumn: ResearchColumn) => {
+    try {
+      const updated = await research.update(item.id, { column: targetColumn });
+      setItems(items.map((i) => (i.id === item.id ? updated : i)));
+      showToast("success", `"${item.linear_issue_identifier}" reopened to Ideas.`);
+    } catch (error) {
+      console.error("Failed to reopen item:", error);
+      const message = error instanceof Error ? error.message : "Failed to reopen item";
+      showToast("error", message);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-full">
       <div className="flex items-center justify-between">
@@ -180,6 +194,7 @@ export function ResearchAdminPage() {
           onItemUpdate={handleItemUpdate}
           onItemClick={handleItemClick}
           onItemDelete={handleItemDelete}
+          onViewClosedArchive={() => setShowClosedArchive(true)}
           isAdmin={true}
         />
       )}
@@ -279,6 +294,20 @@ export function ResearchAdminPage() {
           isAdmin={true}
           onClose={handleCloseModal}
           onUpdate={handleModalUpdate}
+        />
+      )}
+
+      {/* Closed Archive Modal */}
+      {showClosedArchive && (
+        <ClosedArchiveModal
+          items={items}
+          isAdmin={true}
+          onClose={() => setShowClosedArchive(false)}
+          onItemClick={(item) => {
+            setShowClosedArchive(false);
+            navigate(`/admin/research/${item.id}`);
+          }}
+          onReopen={handleReopenItem}
         />
       )}
 

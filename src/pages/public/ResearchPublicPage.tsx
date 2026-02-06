@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { research, type ResearchItem, type ResearchColumn } from "../../lib/api";
 import { KanbanBoard } from "../../components/KanbanBoard";
 import { ResearchModal } from "../../components/ResearchModal";
+import { ClosedArchiveModal } from "../../components/ClosedArchiveModal";
 import { CardLoader } from "../../components/LoadingSpinner";
 
 export function ResearchPublicPage() {
@@ -13,6 +14,7 @@ export function ResearchPublicPage() {
   const [allItems, setAllItems] = useState<ResearchItem[]>([]); // Includes private items for direct URL access
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<ResearchItem | null>(null);
+  const [showClosedArchive, setShowClosedArchive] = useState(false);
 
   // Fetch research items
   useEffect(() => {
@@ -95,6 +97,7 @@ export function ResearchPublicPage() {
           onItemUpdate={handleItemUpdate}
           onItemClick={handleItemClick}
           onItemDelete={handleItemDelete}
+          onViewClosedArchive={() => setShowClosedArchive(true)}
           isAdmin={false}
         />
       )}
@@ -107,6 +110,19 @@ export function ResearchPublicPage() {
           hideLinearBadge={isSelectedItemPrivate}
           onClose={handleCloseModal}
           onUpdate={() => {}} // No-op for public view
+        />
+      )}
+
+      {/* Closed Archive Modal */}
+      {showClosedArchive && (
+        <ClosedArchiveModal
+          items={allItems}
+          isAdmin={false}
+          onClose={() => setShowClosedArchive(false)}
+          onItemClick={(item) => {
+            setShowClosedArchive(false);
+            navigate(`/research/${item.id}`);
+          }}
         />
       )}
     </div>
