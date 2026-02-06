@@ -38,6 +38,7 @@ interface KanbanBoardProps {
   onItemUpdate: (id: number, data: { column?: ResearchColumn }) => Promise<void>;
   onItemClick: (item: ResearchItem) => void;
   onItemDelete: (id: number) => Promise<void>;
+  onViewClosedArchive?: () => void;
   isAdmin: boolean;
 }
 
@@ -59,6 +60,7 @@ export function KanbanBoard({
   onItemUpdate: _onItemUpdate,
   onItemClick,
   onItemDelete,
+  onViewClosedArchive,
   isAdmin,
 }: KanbanBoardProps) {
   const [draggingId, setDraggingId] = useState<number | null>(null);
@@ -66,12 +68,20 @@ export function KanbanBoard({
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const getColumnItems = useCallback(
-    (column: ResearchColumn) =>
-      items
-        .filter((item) => item.column === column)
-        .sort((a, b) => a.display_order - b.display_order),
+    (column: ResearchColumn) => {
+      let filtered = items.filter((item) => item.column === column);
+      // Hide closed items older than 7 days
+      if (column === "closed") {
+        filtered = filtered.filter((item) => daysSince(item.updated_at) <= 7);
+      }
+      return filtered.sort((a, b) => a.display_order - b.display_order);
+    },
     [items]
   );
+
+  const hiddenClosedCount = items.filter(
+    (item) => item.column === "closed" && daysSince(item.updated_at) > 7
+  ).length;
 
   const handleDragStart = (e: React.DragEvent, itemId: number) => {
     if (!isAdmin) return;
@@ -183,12 +193,19 @@ export function KanbanBoard({
             onDrop={(e) => handleDrop(e, column.key)}
             onDragLeave={handleDragLeave}
           >
-            <h3 className="font-medium text-[var(--color-text-primary)] mb-3 flex items-center justify-between">
-              <span>{column.label}</span>
-              <span className="text-sm text-[var(--color-text-tertiary)] bg-[var(--color-bg-elevated)] px-2 py-0.5 rounded">
-                {columnItems.length}
-              </span>
-            </h3>
+            <div className="mb-3">
+              <h3 className="font-medium text-[var(--color-text-primary)] flex items-center justify-between">
+                <span>{column.label}</span>
+                <span className="text-sm text-[var(--color-text-tertiary)] bg-[var(--color-bg-elevated)] px-2 py-0.5 rounded">
+                  {columnItems.length}
+                </span>
+              </h3>
+              {column.key === "closed" && (
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                  Items auto-hide after 7 days
+                </p>
+              )}
+            </div>
 
             <div className="space-y-2 min-h-[200px]" data-column-area>
               {columnItems.map((item, index) => {
@@ -319,6 +336,16 @@ export function KanbanBoard({
                 <div className="text-sm text-[var(--color-text-muted)] text-center py-8">
                   {isAdmin ? "Drop items here" : "No items"}
                 </div>
+              )}
+
+              {/* View All Closed button */}
+              {column.key === "closed" && hiddenClosedCount > 0 && onViewClosedArchive && (
+                <button
+                  onClick={onViewClosedArchive}
+                  className="w-full mt-2 py-2 text-xs text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)] hover:bg-[var(--color-bg-hover)] rounded-md transition-colors"
+                >
+                  View {hiddenClosedCount} archived item{hiddenClosedCount !== 1 ? "s" : ""}
+                </button>
               )}
             </div>
           </div>
