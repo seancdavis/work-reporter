@@ -73,6 +73,7 @@ export const researchNotes = pgTable('research_notes', {
   researchItemId: integer('research_item_id').notNull().references(() => researchItems.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
   contentHtml: text('content_html'),
+  linearCommentId: text('linear_comment_id'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at'),
 });

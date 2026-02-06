@@ -1,0 +1,1 @@
+ALTER TABLE "research_notes" ADD COLUMN "linear_comment_id" text;

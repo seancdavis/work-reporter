@@ -3,7 +3,7 @@ import { db, schema } from "./_shared/db";
 import { eq, asc } from "drizzle-orm";
 import { requireAdmin } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
-import { updateIssueTitle, updateIssueDescription } from "./_shared/linear";
+import { updateIssueTitle, updateIssueDescription, addComment, updateComment } from "./_shared/linear";
 
 // Valid columns for the kanban board
 const VALID_COLUMNS = ["ideas", "exploring", "discussing", "closed"] as const;
@@ -41,6 +41,7 @@ function formatResearchItem(
       research_item_id: note.researchItemId,
       content: note.content,
       content_html: note.contentHtml,
+      linear_comment_id: note.linearCommentId,
       created_at: note.createdAt,
       updated_at: note.updatedAt,
     })),
@@ -279,11 +280,28 @@ export default async (request: Request, context: Context) => {
 
       const note = inserted[0];
 
+      // Sync note to Linear as a comment
+      try {
+        const item = items[0];
+        const result = await addComment(item.linearIssueId, content.trim());
+        if (result.success && result.commentId) {
+          await db
+            .update(schema.researchNotes)
+            .set({ linearCommentId: result.commentId })
+            .where(eq(schema.researchNotes.id, note.id));
+        } else if (!result.success) {
+          console.warn(`Failed to sync note to Linear comment for ${item.linearIssueIdentifier}:`, result.error);
+        }
+      } catch (err) {
+        console.warn("Error syncing note to Linear comment:", err);
+      }
+
       return Response.json({
         id: note.id,
         research_item_id: note.researchItemId,
         content: note.content,
         content_html: note.contentHtml,
+        linear_comment_id: note.linearCommentId,
         created_at: note.createdAt,
         updated_at: note.updatedAt,
       }, { status: 201 });
@@ -323,11 +341,25 @@ export default async (request: Request, context: Context) => {
       }
 
       const note = updated[0];
+
+      // Sync edit to Linear comment if linked
+      if (note.linearCommentId) {
+        try {
+          const result = await updateComment(note.linearCommentId, content.trim());
+          if (!result.success) {
+            console.warn(`Failed to sync note edit to Linear comment ${note.linearCommentId}:`, result.error);
+          }
+        } catch (err) {
+          console.warn("Error syncing note edit to Linear comment:", err);
+        }
+      }
+
       return Response.json({
         id: note.id,
         research_item_id: note.researchItemId,
         content: note.content,
         content_html: note.contentHtml,
+        linear_comment_id: note.linearCommentId,
         created_at: note.createdAt,
         updated_at: note.updatedAt,
       });

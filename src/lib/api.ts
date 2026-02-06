@@ -92,6 +92,7 @@ export interface ResearchNote {
   research_item_id: number;
   content: string;
   content_html: string | null;
+  linear_comment_id: string | null;
   created_at: string;
   updated_at: string | null;
 }
