@@ -94,7 +94,9 @@ export async function getActiveIssues(): Promise<LinearIssue[]> {
       console.error("Linear GraphQL errors:", data.errors);
       return [];
     }
-    return data.data?.viewer?.assignedIssues?.nodes || [];
+    const issues = data.data?.viewer?.assignedIssues?.nodes || [];
+    console.log(`[Linear <-] Fetched ${issues.length} active issues`);
+    return issues;
   } catch (error) {
     console.error("Error fetching Linear issues:", error);
     return [];
@@ -154,7 +156,12 @@ export async function getIssuesByIds(issueIds: string[]): Promise<LinearIssue[]>
       console.error("Linear GraphQL errors:", data.errors);
       return [];
     }
-    return data.data?.issues?.nodes || [];
+    const issues = data.data?.issues?.nodes || [];
+    console.log(`[Linear <-] Fetched ${issues.length} issues by ID (requested ${issueIds.length})`);
+    for (const issue of issues) {
+      console.log(`[Linear <-]   ${issue.identifier}: "${issue.title}" [${issue.state.name}]`);
+    }
+    return issues;
   } catch (error) {
     console.error("Error fetching Linear issues by IDs:", error);
     return [];
@@ -212,7 +219,8 @@ async function linearMutation(
 }
 
 export async function updateIssueTitle(issueId: string, title: string): Promise<MutationResult> {
-  return linearMutation(
+  console.log(`[Linear ->] Updating title for issue ${issueId}: "${title}"`);
+  const result = await linearMutation(
     `mutation UpdateIssue($id: String!, $title: String!) {
       issueUpdate(id: $id, input: { title: $title }) {
         success
@@ -220,10 +228,13 @@ export async function updateIssueTitle(issueId: string, title: string): Promise<
     }`,
     { id: issueId, title },
   );
+  console.log(`[Linear ->] Title update ${result.success ? "succeeded" : "failed: " + result.error}`);
+  return result;
 }
 
 export async function updateIssueDescription(issueId: string, description: string): Promise<MutationResult> {
-  return linearMutation(
+  console.log(`[Linear ->] Updating description for issue ${issueId} (${description.length} chars)`);
+  const result = await linearMutation(
     `mutation UpdateIssue($id: String!, $description: String!) {
       issueUpdate(id: $id, input: { description: $description }) {
         success
@@ -231,10 +242,13 @@ export async function updateIssueDescription(issueId: string, description: strin
     }`,
     { id: issueId, description },
   );
+  console.log(`[Linear ->] Description update ${result.success ? "succeeded" : "failed: " + result.error}`);
+  return result;
 }
 
 export async function updateIssueState(issueId: string, stateId: string): Promise<MutationResult> {
-  return linearMutation(
+  console.log(`[Linear ->] Updating state for issue ${issueId} to state ${stateId}`);
+  const result = await linearMutation(
     `mutation UpdateIssue($id: String!, $stateId: String!) {
       issueUpdate(id: $id, input: { stateId: $stateId }) {
         success
@@ -242,9 +256,12 @@ export async function updateIssueState(issueId: string, stateId: string): Promis
     }`,
     { id: issueId, stateId },
   );
+  console.log(`[Linear ->] State update ${result.success ? "succeeded" : "failed: " + result.error}`);
+  return result;
 }
 
 export async function addComment(issueId: string, body: string): Promise<{ success: boolean; commentId?: string; error?: string }> {
+  console.log(`[Linear ->] Creating comment on issue ${issueId} (${body.length} chars)`);
   const result = await linearMutation(
     `mutation CreateComment($issueId: String!, $body: String!) {
       commentCreate(input: { issueId: $issueId, body: $body }) {
@@ -258,15 +275,18 @@ export async function addComment(issueId: string, body: string): Promise<{ succe
   );
 
   if (!result.success) {
+    console.log(`[Linear ->] Comment creation failed: ${result.error}`);
     return { success: false, error: result.error };
   }
 
   const commentId = (result.data?.commentCreate as { comment?: { id: string } })?.comment?.id;
+  console.log(`[Linear ->] Comment created: ${commentId}`);
   return { success: true, commentId };
 }
 
 export async function updateComment(commentId: string, body: string): Promise<MutationResult> {
-  return linearMutation(
+  console.log(`[Linear ->] Updating comment ${commentId} (${body.length} chars)`);
+  const result = await linearMutation(
     `mutation UpdateComment($id: String!, $body: String!) {
       commentUpdate(id: $id, input: { body: $body }) {
         success
@@ -274,6 +294,8 @@ export async function updateComment(commentId: string, body: string): Promise<Mu
     }`,
     { id: commentId, body },
   );
+  console.log(`[Linear ->] Comment update ${result.success ? "succeeded" : "failed: " + result.error}`);
+  return result;
 }
 
 export async function getWorkflowStates(teamId: string): Promise<WorkflowState[]> {
@@ -308,7 +330,9 @@ export async function getWorkflowStates(teamId: string): Promise<WorkflowState[]
     if (!response.ok) return [];
     const data = await response.json();
     if (data.errors) return [];
-    return data.data?.team?.states?.nodes || [];
+    const states = data.data?.team?.states?.nodes || [];
+    console.log(`[Linear <-] Fetched ${states.length} workflow states for team ${teamId}: ${states.map((s: WorkflowState) => `${s.name} (${s.type})`).join(", ")}`);
+    return states;
   } catch (error) {
     console.error("Error fetching workflow states:", error);
     return [];
@@ -341,7 +365,9 @@ export async function getIssueTeamId(issueId: string): Promise<string | null> {
     if (!response.ok) return null;
     const data = await response.json();
     if (data.errors) return null;
-    return data.data?.issue?.team?.id || null;
+    const teamId = data.data?.issue?.team?.id || null;
+    console.log(`[Linear <-] Issue ${issueId} belongs to team ${teamId}`);
+    return teamId;
   } catch (error) {
     console.error("Error fetching issue team:", error);
     return null;
@@ -443,7 +469,9 @@ export async function searchIssues(searchTerm: string): Promise<LinearIssue[]> {
       console.error("Linear GraphQL errors:", data.errors);
       return [];
     }
-    return data.data?.issues?.nodes || [];
+    const issues = data.data?.issues?.nodes || [];
+    console.log(`[Linear <-] Search "${searchTerm}" returned ${issues.length} issues`);
+    return issues;
   } catch (error) {
     console.error("Error searching Linear issues:", error);
     return [];

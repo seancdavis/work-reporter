@@ -252,6 +252,7 @@ export default async (request: Request, context: Context) => {
         .returning();
 
       const result = inserted[0];
+      console.log(`[Linear <-] Added research item from ${linear_issue_identifier}: "${finalTitle}" in column "${column}"`);
 
       return Response.json(formatResearchItem(result, []), { status: 201 });
     } catch (error) {
@@ -303,8 +304,9 @@ export default async (request: Request, context: Context) => {
       const note = inserted[0];
 
       // Sync note to Linear as a comment
+      const item = items[0];
+      console.log(`[Sync] New note on ${item.linearIssueIdentifier} -> creating Linear comment`);
       try {
-        const item = items[0];
         const result = await addComment(item.linearIssueId, content.trim());
         if (result.success && result.commentId) {
           await db
@@ -312,10 +314,10 @@ export default async (request: Request, context: Context) => {
             .set({ linearCommentId: result.commentId })
             .where(eq(schema.researchNotes.id, note.id));
         } else if (!result.success) {
-          console.warn(`Failed to sync note to Linear comment for ${item.linearIssueIdentifier}:`, result.error);
+          console.warn(`[Sync] Failed to create comment for ${item.linearIssueIdentifier}:`, result.error);
         }
       } catch (err) {
-        console.warn("Error syncing note to Linear comment:", err);
+        console.warn(`[Sync] Error creating comment for ${item.linearIssueIdentifier}:`, err);
       }
 
       return Response.json({
@@ -366,13 +368,14 @@ export default async (request: Request, context: Context) => {
 
       // Sync edit to Linear comment if linked
       if (note.linearCommentId) {
+        console.log(`[Sync] Note ${note.id} edited -> updating Linear comment ${note.linearCommentId}`);
         try {
           const result = await updateComment(note.linearCommentId, content.trim());
           if (!result.success) {
-            console.warn(`Failed to sync note edit to Linear comment ${note.linearCommentId}:`, result.error);
+            console.warn(`[Sync] Failed to update comment ${note.linearCommentId}:`, result.error);
           }
         } catch (err) {
-          console.warn("Error syncing note edit to Linear comment:", err);
+          console.warn(`[Sync] Error updating comment ${note.linearCommentId}:`, err);
         }
       }
 
@@ -454,40 +457,45 @@ export default async (request: Request, context: Context) => {
 
       // Sync title change to Linear
       if (title !== undefined) {
+        console.log(`[Sync] Title changed for ${updated[0].linearIssueIdentifier}: "${title}"`);
         try {
           const result = await updateIssueTitle(updated[0].linearIssueId, title);
           if (!result.success) {
-            console.warn(`Failed to sync title to Linear for ${updated[0].linearIssueIdentifier}:`, result.error);
+            console.warn(`[Sync] Failed to sync title for ${updated[0].linearIssueIdentifier}:`, result.error);
           }
         } catch (err) {
-          console.warn(`Error syncing title to Linear for ${updated[0].linearIssueIdentifier}:`, err);
+          console.warn(`[Sync] Error syncing title for ${updated[0].linearIssueIdentifier}:`, err);
         }
       }
 
       // Sync description change to Linear
       if (description !== undefined) {
+        console.log(`[Sync] Description changed for ${updated[0].linearIssueIdentifier} (${(description || "").length} chars)`);
         try {
           const result = await updateIssueDescription(updated[0].linearIssueId, description || "");
           if (!result.success) {
-            console.warn(`Failed to sync description to Linear for ${updated[0].linearIssueIdentifier}:`, result.error);
+            console.warn(`[Sync] Failed to sync description for ${updated[0].linearIssueIdentifier}:`, result.error);
           }
         } catch (err) {
-          console.warn(`Error syncing description to Linear for ${updated[0].linearIssueIdentifier}:`, err);
+          console.warn(`[Sync] Error syncing description for ${updated[0].linearIssueIdentifier}:`, err);
         }
       }
 
       // Sync column change to Linear status
       if (column !== undefined) {
+        console.log(`[Sync] Column changed for ${updated[0].linearIssueIdentifier}: -> ${column} (Linear state type: ${COLUMN_TO_STATE_TYPE[column]})`);
         try {
           const stateId = await getLinearStateIdForColumn(updated[0].linearIssueId, column);
           if (stateId) {
             const result = await updateIssueState(updated[0].linearIssueId, stateId);
             if (!result.success) {
-              console.warn(`Failed to sync column to Linear for ${updated[0].linearIssueIdentifier}:`, result.error);
+              console.warn(`[Sync] Failed to sync column for ${updated[0].linearIssueIdentifier}:`, result.error);
             }
+          } else {
+            console.warn(`[Sync] No matching Linear state found for column "${column}"`);
           }
         } catch (err) {
-          console.warn(`Error syncing column to Linear for ${updated[0].linearIssueIdentifier}:`, err);
+          console.warn(`[Sync] Error syncing column for ${updated[0].linearIssueIdentifier}:`, err);
         }
       }
 
@@ -561,16 +569,19 @@ export default async (request: Request, context: Context) => {
       for (const item of items) {
         const current = currentColumnMap.get(item.id);
         if (current && current.column !== item.column) {
+          console.log(`[Sync] Drag: ${current.linearIssueIdentifier} moved ${current.column} -> ${item.column} (Linear state type: ${COLUMN_TO_STATE_TYPE[item.column]})`);
           try {
             const stateId = await getLinearStateIdForColumn(current.linearIssueId, item.column);
             if (stateId) {
               const result = await updateIssueState(current.linearIssueId, stateId);
               if (!result.success) {
-                console.warn(`Failed to sync column to Linear for ${current.linearIssueIdentifier}:`, result.error);
+                console.warn(`[Sync] Failed to sync column for ${current.linearIssueIdentifier}:`, result.error);
               }
+            } else {
+              console.warn(`[Sync] No matching Linear state found for column "${item.column}"`);
             }
           } catch (err) {
-            console.warn(`Error syncing column to Linear for ${current.linearIssueIdentifier}:`, err);
+            console.warn(`[Sync] Error syncing column for ${current.linearIssueIdentifier}:`, err);
           }
         }
       }
