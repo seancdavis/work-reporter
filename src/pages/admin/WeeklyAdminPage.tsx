@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Copy, Eye, Edit3, X } from "lucide-react";
 import { weeklyStandups, dailyStandups, type WeeklyStandup, type DailyStandup } from "../../lib/api";
 import { Button } from "../../components/Button";
@@ -6,22 +7,33 @@ import { TextArea } from "../../components/TextArea";
 import { IssueSelector } from "../../components/IssueSelector";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { AICleanupButton } from "../../components/AICleanupButton";
+import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
+import { useDraftStorage } from "../../hooks/useDraftStorage";
 import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, cn } from "../../lib/utils";
 
 export function WeeklyAdminPage() {
+  const { week: weekParam } = useParams<{ week?: string }>();
+  const navigate = useNavigate();
   const [standups, setStandups] = useState<WeeklyStandup[]>([]);
   const [lastWeekDailyStandups, setLastWeekDailyStandups] = useState<DailyStandup[]>([]);
-  const [, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState(formatDate(getWeekStart()));
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const selectedWeek = weekParam || formatDate(getWeekStart());
+
+  // Redirect to URL with week if none provided
+  useEffect(() => {
+    if (!weekParam) {
+      navigate(`/admin/weekly/${selectedWeek}`, { replace: true });
+    }
+  }, [weekParam, selectedWeek, navigate]);
   const { toasts, showToast, dismissToast } = useToast();
 
   // Preview mode
   const [isPreview, setIsPreview] = useState(false);
 
   // Form state
-  const [plannedAccomplishments, setPlannedAccomplishments] = useState("");
   const [linkedIssues, setLinkedIssues] = useState<
     Array<{ id: string; identifier: string; title: string }>
   >([]);
@@ -60,17 +72,18 @@ export function WeeklyAdminPage() {
     fetchLastWeekDailies();
   }, [selectedWeek]);
 
-  // Load selected week's standup
+  const currentStandup = standups.find((s) => s.week_start === selectedWeek);
+
+  // Draft storage for text fields
+  const accomplishmentsDraft = useDraftStorage({
+    key: `draft:weekly:${selectedWeek}:planned_accomplishments`,
+    savedValue: currentStandup?.planned_accomplishments || "",
+  });
+
+  // Load linked issues and reset preview when week changes
   useEffect(() => {
     const standup = standups.find((s) => s.week_start === selectedWeek);
-    if (standup) {
-      setPlannedAccomplishments(standup.planned_accomplishments || "");
-      setLinkedIssues(standup.linked_issues || []);
-    } else {
-      setPlannedAccomplishments("");
-      setLinkedIssues([]);
-    }
-    // Reset preview mode when changing weeks
+    setLinkedIssues(standup?.linked_issues || []);
     setIsPreview(false);
   }, [selectedWeek, standups]);
 
@@ -79,7 +92,7 @@ export function WeeklyAdminPage() {
     try {
       const saved = await weeklyStandups.save({
         week_start: selectedWeek,
-        planned_accomplishments: plannedAccomplishments || undefined,
+        planned_accomplishments: accomplishmentsDraft.draftValue || undefined,
         linked_issues: linkedIssues,
       });
 
@@ -94,6 +107,8 @@ export function WeeklyAdminPage() {
             new Date(b.week_start).getTime() - new Date(a.week_start).getTime()
         );
       });
+
+      accomplishmentsDraft.clearDraft();
       showToast("success", "Weekly planning saved successfully");
     } catch (error) {
       console.error("Failed to save weekly standup:", error);
@@ -137,7 +152,6 @@ export function WeeklyAdminPage() {
     return formatDate(getWeekStart(date));
   });
 
-  const currentStandup = standups.find((s) => s.week_start === selectedWeek);
   const lastWeekIssues = getLastWeekIssues();
   const hasLastWeekIssues = lastWeekIssues.length > 0;
   const hasSavedContent = !!currentStandup?.planned_accomplishments_html;
@@ -155,7 +169,6 @@ export function WeeklyAdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Week selector sidebar */}
           <div className="lg:col-span-1">
-            <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Week</h2>
             <div className="space-y-1">
               {recentWeeks.map((weekStart) => {
                 const hasStandup = standups.some((s) => s.week_start === weekStart);
@@ -163,13 +176,13 @@ export function WeeklyAdminPage() {
                 return (
                   <button
                     key={weekStart}
-                    onClick={() => setSelectedWeek(weekStart)}
+                    onClick={() => navigate(`/admin/weekly/${weekStart}`)}
                     className={cn(
                       "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                       selectedWeek === weekStart
                         ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
                         : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
-                      hasStandup && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
+                      !loading && hasStandup && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -179,9 +192,11 @@ export function WeeklyAdminPage() {
                           {getWeekRange(weekStartDate)}
                         </div>
                       </div>
-                      {hasStandup && (
-                        <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
-                      )}
+                      {loading ? (
+                        <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                      ) : hasStandup ? (
+                        <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                      ) : null}
                     </div>
                   </button>
                 );
@@ -191,6 +206,9 @@ export function WeeklyAdminPage() {
 
           {/* Main form */}
           <div className="lg:col-span-3 space-y-6">
+            {loading ? (
+              <CardLoader lines={4} />
+            ) : (
             <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
               <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-1">
                 {getRelativeWeekLabel(new Date(selectedWeek + "T00:00:00"))}
@@ -234,8 +252,8 @@ export function WeeklyAdminPage() {
                       {!isPreview && (
                         <AICleanupButton
                           field="planned_accomplishments"
-                          content={plannedAccomplishments}
-                          onCleanup={setPlannedAccomplishments}
+                          content={accomplishmentsDraft.draftValue}
+                          onCleanup={accomplishmentsDraft.setDraftValue}
                         />
                       )}
                     </div>
@@ -251,8 +269,8 @@ export function WeeklyAdminPage() {
                     </div>
                   ) : (
                     <TextArea
-                      value={plannedAccomplishments}
-                      onChange={(e) => setPlannedAccomplishments(e.target.value)}
+                      value={accomplishmentsDraft.draftValue}
+                      onChange={(e) => accomplishmentsDraft.setDraftValue(e.target.value)}
                       placeholder="Describe your planned accomplishments..."
                       rows={4}
                     />
@@ -313,13 +331,19 @@ export function WeeklyAdminPage() {
                   )}
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex items-center justify-end gap-3">
+                  {accomplishmentsDraft.hasDraft && (
+                    <span className="text-xs text-[var(--color-warning-text)] bg-[var(--color-warning-bg)] px-2 py-1 rounded-[var(--radius-sm)]">
+                      Unsaved draft
+                    </span>
+                  )}
                   <Button onClick={handleSave} loading={saving}>
                     Save Weekly Planning
                   </Button>
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>

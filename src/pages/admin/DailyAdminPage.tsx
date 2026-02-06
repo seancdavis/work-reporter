@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Lock, Eye, Edit3, Copy, X } from "lucide-react";
 import { dailyStandups, type DailyStandup } from "../../lib/api";
 import { Button } from "../../components/Button";
@@ -8,24 +9,32 @@ import { MarkdownContent } from "../../components/MarkdownContent";
 import { AICleanupButton } from "../../components/AICleanupButton";
 import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
-import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, timeAgo, cn } from "../../lib/utils";
+import { useDraftStorage } from "../../hooks/useDraftStorage";
+import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, groupDatesByWeek, timeAgo, cn } from "../../lib/utils";
 
 type PreviewField = "yesterday_summary" | "today_plan" | "blockers";
 
 export function DailyAdminPage() {
+  const { date: dateParam } = useParams<{ date?: string }>();
+  const navigate = useNavigate();
   const [standups, setStandups] = useState<DailyStandup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(formatDate(getWeekdayDate()));
   const [saving, setSaving] = useState(false);
+
+  const selectedDate = dateParam || formatDate(getWeekdayDate());
+
+  // Redirect to URL with date if none provided
+  useEffect(() => {
+    if (!dateParam) {
+      navigate(`/admin/daily/${selectedDate}`, { replace: true });
+    }
+  }, [dateParam, selectedDate, navigate]);
   const { toasts, showToast, dismissToast } = useToast();
 
   // Preview mode for each field (only available for saved content)
   const [previewFields, setPreviewFields] = useState<Set<PreviewField>>(new Set());
 
   // Form state
-  const [yesterdaySummary, setYesterdaySummary] = useState("");
-  const [todayPlan, setTodayPlan] = useState("");
-  const [blockers, setBlockers] = useState("");
   const [linkedIssues, setLinkedIssues] = useState<
     Array<{ id: string; identifier: string; title: string }>
   >([]);
@@ -46,21 +55,26 @@ export function DailyAdminPage() {
     fetch();
   }, []);
 
-  // Load selected date's standup
+  const currentStandup = standups.find((s) => s.date === selectedDate);
+
+  // Draft storage for text fields
+  const yesterdayDraft = useDraftStorage({
+    key: `draft:daily:${selectedDate}:yesterday_summary`,
+    savedValue: currentStandup?.yesterday_summary || "",
+  });
+  const todayDraft = useDraftStorage({
+    key: `draft:daily:${selectedDate}:today_plan`,
+    savedValue: currentStandup?.today_plan || "",
+  });
+  const blockersDraft = useDraftStorage({
+    key: `draft:daily:${selectedDate}:blockers`,
+    savedValue: currentStandup?.blockers || "",
+  });
+
+  // Load linked issues and reset preview when date changes
   useEffect(() => {
     const standup = standups.find((s) => s.date === selectedDate);
-    if (standup) {
-      setYesterdaySummary(standup.yesterday_summary || "");
-      setTodayPlan(standup.today_plan || "");
-      setBlockers(standup.blockers || "");
-      setLinkedIssues(standup.linked_issues || []);
-    } else {
-      setYesterdaySummary("");
-      setTodayPlan("");
-      setBlockers("");
-      setLinkedIssues([]);
-    }
-    // Reset preview mode when changing dates
+    setLinkedIssues(standup?.linked_issues || []);
     setPreviewFields(new Set());
   }, [selectedDate, standups]);
 
@@ -69,9 +83,9 @@ export function DailyAdminPage() {
     try {
       const saved = await dailyStandups.save({
         date: selectedDate,
-        yesterday_summary: yesterdaySummary || undefined,
-        today_plan: todayPlan || undefined,
-        blockers: blockers || undefined,
+        yesterday_summary: yesterdayDraft.draftValue || undefined,
+        today_plan: todayDraft.draftValue || undefined,
+        blockers: blockersDraft.draftValue || undefined,
         linked_issues: linkedIssues,
       });
 
@@ -85,6 +99,11 @@ export function DailyAdminPage() {
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
       });
+
+      // Clear drafts after successful save
+      yesterdayDraft.clearDraft();
+      todayDraft.clearDraft();
+      blockersDraft.clearDraft();
 
       showToast("success", "Standup saved successfully");
     } catch (error) {
@@ -155,14 +174,13 @@ export function DailyAdminPage() {
     return dates;
   })();
 
-  const currentStandup = standups.find((s) => s.date === selectedDate);
   const yesterdayStandup = getYesterdayStandup();
   const hasYesterdayIssues = (yesterdayStandup?.linked_issues?.length ?? 0) > 0;
   const hasYesterdayPlan = !!yesterdayStandup?.today_plan;
 
   const copyPlanFromYesterday = () => {
     if (yesterdayStandup?.today_plan) {
-      setYesterdaySummary(yesterdayStandup.today_plan);
+      yesterdayDraft.setDraftValue(yesterdayStandup.today_plan);
     }
   };
 
@@ -297,45 +315,44 @@ export function DailyAdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Date selector sidebar */}
           <div className="lg:col-span-1">
-            <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Date</h2>
-            <div className="space-y-1">
-              {loading ? (
-                Array.from({ length: 7 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-full px-3 py-2 rounded-md animate-pulse"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="h-4 bg-[var(--color-bg-active)] rounded w-24" />
-                      <div className="w-2 h-2 bg-[var(--color-bg-active)] rounded-full" />
-                    </div>
+            <div className="space-y-4">
+              {groupDatesByWeek(recentDates).map((group, groupIndex, groups) => (
+                <div key={group.weekKey}>
+                  <div className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider px-3 mb-1">
+                    {group.weekLabel}
                   </div>
-                ))
-              ) : (
-                recentDates.map((date) => {
-                  const hasStandup = standups.some((s) => s.date === date);
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => setSelectedDate(date)}
-                      className={cn(
-                        "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
-                        selectedDate === date
-                          ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
-                          : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
-                        hasStandup && selectedDate !== date && "text-[var(--color-text-primary)]"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{formatDateShort(date)}</span>
-                        {hasStandup && (
-                          <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })
-              )}
+                  <div className="space-y-1">
+                    {group.dates.map((date) => {
+                      const hasStandup = standups.some((s) => s.date === date);
+                      return (
+                        <button
+                          key={date}
+                          onClick={() => navigate(`/admin/daily/${date}`)}
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
+                            selectedDate === date
+                              ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                              : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                            !loading && hasStandup && selectedDate !== date && "text-[var(--color-text-primary)]"
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{formatDateShort(date)}</span>
+                            {loading ? (
+                              <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                            ) : hasStandup ? (
+                              <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {groupIndex < groups.length - 1 && (
+                    <div className="border-b border-[var(--color-border-primary)] mt-3" />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -359,8 +376,8 @@ export function DailyAdminPage() {
                   {renderFieldWithPreview(
                     "yesterday_summary",
                     "What did you accomplish yesterday?",
-                    yesterdaySummary,
-                    setYesterdaySummary,
+                    yesterdayDraft.draftValue,
+                    yesterdayDraft.setDraftValue,
                     "Describe what you completed...",
                     3
                   )}
@@ -369,8 +386,8 @@ export function DailyAdminPage() {
                   {renderFieldWithPreview(
                     "today_plan",
                     "What are you planning for today?",
-                    todayPlan,
-                    setTodayPlan,
+                    todayDraft.draftValue,
+                    todayDraft.setDraftValue,
                     "List your goals for today...",
                     3
                   )}
@@ -379,8 +396,8 @@ export function DailyAdminPage() {
                   {renderFieldWithPreview(
                     "blockers",
                     "Any blockers?",
-                    blockers,
-                    setBlockers,
+                    blockersDraft.draftValue,
+                    blockersDraft.setDraftValue,
                     "Describe any blockers or issues...",
                     2
                   )}
@@ -457,7 +474,12 @@ export function DailyAdminPage() {
                     )}
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-end gap-3">
+                    {(yesterdayDraft.hasDraft || todayDraft.hasDraft || blockersDraft.hasDraft) && (
+                      <span className="text-xs text-[var(--color-warning-text)] bg-[var(--color-warning-bg)] px-2 py-1 rounded-[var(--radius-sm)]">
+                        Unsaved draft
+                      </span>
+                    )}
                     <Button onClick={handleSave} loading={saving}>
                       Save Standup
                     </Button>

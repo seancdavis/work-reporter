@@ -1,13 +1,25 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { weeklyReports, dailyStandups, type WeeklyReport, type DailyStandup } from "../../lib/api";
 import { MarkdownContent } from "../../components/MarkdownContent";
+import { CardLoader } from "../../components/LoadingSpinner";
 import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn, timeAgo } from "../../lib/utils";
 
 export function ReportsPublicPage() {
+  const { week: weekParam } = useParams<{ week?: string }>();
+  const navigate = useNavigate();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [dailyData, setDailyData] = useState<DailyStandup[]>([]);
-  const [, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState(formatDate(getWeekStart()));
+  const [loading, setLoading] = useState(true);
+
+  const selectedWeek = weekParam || formatDate(getWeekStart());
+
+  // Redirect to URL with week if none provided
+  useEffect(() => {
+    if (!weekParam) {
+      navigate(`/reports/${selectedWeek}`, { replace: true });
+    }
+  }, [weekParam, selectedWeek, navigate]);
 
   // Fetch reports and daily standups
   useEffect(() => {
@@ -66,7 +78,6 @@ export function ReportsPublicPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Week selector sidebar */}
         <div className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Week</h2>
           <div className="space-y-1">
             {recentWeeks.map((weekStart) => {
               const hasReport = reports.some((r) => r.week_start === weekStart);
@@ -74,13 +85,13 @@ export function ReportsPublicPage() {
               return (
                 <button
                   key={weekStart}
-                  onClick={() => setSelectedWeek(weekStart)}
+                  onClick={() => navigate(`/reports/${weekStart}`)}
                   className={cn(
                     "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                     selectedWeek === weekStart
                       ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
                       : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
-                    hasReport && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
+                    !loading && hasReport && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -90,9 +101,11 @@ export function ReportsPublicPage() {
                         {getWeekRange(weekStartDate)}
                       </div>
                     </div>
-                    {hasReport && (
-                      <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
-                    )}
+                    {loading ? (
+                      <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                    ) : hasReport ? (
+                      <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                    ) : null}
                   </div>
                 </button>
               );
@@ -102,6 +115,10 @@ export function ReportsPublicPage() {
 
         {/* Main content */}
         <div className="lg:col-span-3 space-y-6">
+          {loading ? (
+            <CardLoader lines={4} />
+          ) : (
+          <>
           {/* Weekly Summary */}
           <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
             <div className="flex items-baseline justify-between mb-6">
@@ -174,6 +191,8 @@ export function ReportsPublicPage() {
                 })}
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>

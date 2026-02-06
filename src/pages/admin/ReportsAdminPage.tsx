@@ -1,25 +1,35 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Eye, Edit3, Sparkles } from "lucide-react";
 import { weeklyReports, dailyStandups, weeklyStandups, type WeeklyReport, type DailyStandup, type WeeklyStandup } from "../../lib/api";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/TextArea";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { AICleanupButton } from "../../components/AICleanupButton";
+import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
+import { useDraftStorage } from "../../hooks/useDraftStorage";
 import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn } from "../../lib/utils";
 
 export function ReportsAdminPage() {
+  const { week: weekParam } = useParams<{ week?: string }>();
+  const navigate = useNavigate();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [dailyData, setDailyData] = useState<DailyStandup[]>([]);
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyStandup | null>(null);
-  const [, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState(formatDate(getWeekStart()));
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const selectedWeek = weekParam || formatDate(getWeekStart());
+
+  // Redirect to URL with week if none provided
+  useEffect(() => {
+    if (!weekParam) {
+      navigate(`/admin/reports/${selectedWeek}`, { replace: true });
+    }
+  }, [weekParam, selectedWeek, navigate]);
   const [generating, setGenerating] = useState(false);
   const { toasts, showToast, dismissToast } = useToast();
-
-  // Form state
-  const [summary, setSummary] = useState("");
 
   // Preview mode
   const [isPreview, setIsPreview] = useState(false);
@@ -46,24 +56,25 @@ export function ReportsAdminPage() {
     fetch();
   }, [selectedWeek]);
 
-  // Load selected week's report
+  const currentReport = reports.find((r) => r.week_start === selectedWeek);
+
+  // Draft storage for summary field
+  const summaryDraft = useDraftStorage({
+    key: `draft:reports:${selectedWeek}:summary`,
+    savedValue: currentReport?.summary || "",
+  });
+
+  // Reset preview mode when changing weeks
   useEffect(() => {
-    const report = reports.find((r) => r.week_start === selectedWeek);
-    if (report) {
-      setSummary(report.summary || "");
-    } else {
-      setSummary("");
-    }
-    // Reset preview mode when changing weeks
     setIsPreview(false);
-  }, [selectedWeek, reports]);
+  }, [selectedWeek]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const saved = await weeklyReports.save({
         week_start: selectedWeek,
-        summary: summary || undefined,
+        summary: summaryDraft.draftValue || undefined,
       });
 
       setReports((prev) => {
@@ -76,6 +87,8 @@ export function ReportsAdminPage() {
             new Date(b.week_start).getTime() - new Date(a.week_start).getTime()
         );
       });
+
+      summaryDraft.clearDraft();
       showToast("success", "Weekly report saved successfully");
     } catch (error) {
       console.error("Failed to save report:", error);
@@ -89,7 +102,7 @@ export function ReportsAdminPage() {
     setGenerating(true);
     try {
       const result = await weeklyReports.generate(selectedWeek);
-      setSummary(result.generated);
+      summaryDraft.setDraftValue(result.generated);
       showToast("success", "AI summary generated - review and save when ready");
     } catch (error) {
       console.error("Failed to generate report:", error);
@@ -106,7 +119,6 @@ export function ReportsAdminPage() {
     return formatDate(getWeekStart(date));
   });
 
-  const currentReport = reports.find((r) => r.week_start === selectedWeek);
   const hasSavedContent = !!currentReport?.summary_html;
 
   return (
@@ -122,7 +134,6 @@ export function ReportsAdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Week selector sidebar */}
           <div className="lg:col-span-1">
-            <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Week</h2>
             <div className="space-y-1">
               {recentWeeks.map((weekStart) => {
                 const hasReport = reports.some((r) => r.week_start === weekStart);
@@ -130,13 +141,13 @@ export function ReportsAdminPage() {
                 return (
                   <button
                     key={weekStart}
-                    onClick={() => setSelectedWeek(weekStart)}
+                    onClick={() => navigate(`/admin/reports/${weekStart}`)}
                     className={cn(
                       "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                       selectedWeek === weekStart
                         ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
                         : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
-                      hasReport && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
+                      !loading && hasReport && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -146,9 +157,11 @@ export function ReportsAdminPage() {
                           {getWeekRange(weekStartDate)}
                         </div>
                       </div>
-                      {hasReport && (
-                        <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
-                      )}
+                      {loading ? (
+                        <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                      ) : hasReport ? (
+                        <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                      ) : null}
                     </div>
                   </button>
                 );
@@ -158,6 +171,10 @@ export function ReportsAdminPage() {
 
           {/* Main content */}
           <div className="lg:col-span-3 space-y-6">
+            {loading ? (
+              <CardLoader lines={4} />
+            ) : (
+            <>
             {/* Summary textarea */}
             <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
               <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-1">
@@ -216,8 +233,8 @@ export function ReportsAdminPage() {
                           </button>
                           <AICleanupButton
                             field="weekly_report"
-                            content={summary}
-                            onCleanup={setSummary}
+                            content={summaryDraft.draftValue}
+                            onCleanup={summaryDraft.setDraftValue}
                           />
                         </>
                       )}
@@ -234,15 +251,20 @@ export function ReportsAdminPage() {
                     </div>
                   ) : (
                     <TextArea
-                      value={summary}
-                      onChange={(e) => setSummary(e.target.value)}
+                      value={summaryDraft.draftValue}
+                      onChange={(e) => summaryDraft.setDraftValue(e.target.value)}
                       placeholder="Write or generate a summary of your week's accomplishments..."
                       rows={6}
                     />
                   )}
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex items-center justify-end gap-3">
+                  {summaryDraft.hasDraft && (
+                    <span className="text-xs text-[var(--color-warning-text)] bg-[var(--color-warning-bg)] px-2 py-1 rounded-[var(--radius-sm)]">
+                      Unsaved draft
+                    </span>
+                  )}
                   <Button onClick={handleSave} loading={saving}>
                     Save Report
                   </Button>
@@ -323,6 +345,8 @@ export function ReportsAdminPage() {
                 </div>
               )}
             </div>
+            </>
+            )}
           </div>
         </div>
       </div>

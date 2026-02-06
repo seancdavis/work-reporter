@@ -1,12 +1,24 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { weeklyStandups, type WeeklyStandup } from "../../lib/api";
 import { MarkdownContent } from "../../components/MarkdownContent";
+import { CardLoader } from "../../components/LoadingSpinner";
 import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, cn } from "../../lib/utils";
 
 export function WeeklyPublicPage() {
+  const { week: weekParam } = useParams<{ week?: string }>();
+  const navigate = useNavigate();
   const [standups, setStandups] = useState<WeeklyStandup[]>([]);
-  const [, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState(formatDate(getWeekStart()));
+  const [loading, setLoading] = useState(true);
+
+  const selectedWeek = weekParam || formatDate(getWeekStart());
+
+  // Redirect to URL with week if none provided
+  useEffect(() => {
+    if (!weekParam) {
+      navigate(`/weekly/${selectedWeek}`, { replace: true });
+    }
+  }, [weekParam, selectedWeek, navigate]);
 
   // Fetch recent weekly standups
   useEffect(() => {
@@ -62,7 +74,6 @@ export function WeeklyPublicPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Week selector sidebar */}
         <div className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Week</h2>
           <div className="space-y-1">
             {recentWeeks.map((weekStart) => {
               const hasStandup = standups.some((s) => s.week_start === weekStart);
@@ -70,13 +81,13 @@ export function WeeklyPublicPage() {
               return (
                 <button
                   key={weekStart}
-                  onClick={() => setSelectedWeek(weekStart)}
+                  onClick={() => navigate(`/weekly/${weekStart}`)}
                   className={cn(
                     "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                     selectedWeek === weekStart
                       ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
                       : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
-                    hasStandup && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
+                    !loading && hasStandup && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -86,9 +97,11 @@ export function WeeklyPublicPage() {
                         {getWeekRange(weekStartDate)}
                       </div>
                     </div>
-                    {hasStandup && (
-                      <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
-                    )}
+                    {loading ? (
+                      <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                    ) : hasStandup ? (
+                      <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                    ) : null}
                   </div>
                 </button>
               );
@@ -98,6 +111,9 @@ export function WeeklyPublicPage() {
 
         {/* Main content */}
         <div className="lg:col-span-3 space-y-6">
+          {loading ? (
+            <CardLoader lines={4} />
+          ) : (
           <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
             <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-1">
               {getRelativeWeekLabel(new Date(selectedWeek + "T00:00:00"))}
@@ -138,6 +154,7 @@ export function WeeklyPublicPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

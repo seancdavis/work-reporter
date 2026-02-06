@@ -37,20 +37,23 @@ export function AdminLayout() {
                 </span>
               </Link>
               <nav className="flex gap-1">
-                {adminNavItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      "px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-colors",
-                      location.pathname === item.path
-                        ? "bg-[var(--color-bg-hover)] text-[var(--color-text-primary)]"
-                        : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]"
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {adminNavItems.map((item) => {
+                  const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={cn(
+                        "px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-[var(--color-bg-hover)] text-[var(--color-text-primary)]"
+                          : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]"
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
               </nav>
             </div>
             <div className="flex items-center gap-4">

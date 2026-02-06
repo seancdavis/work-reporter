@@ -4,7 +4,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "../lib/utils";
 
 const baseNavItems = [
-  { path: "/", label: "Daily" },
+  { path: "/daily", label: "Daily" },
   { path: "/weekly", label: "Weekly" },
   { path: "/reports", label: "Reports" },
   { path: "/research", label: "Research" },
@@ -28,24 +28,27 @@ export function Layout() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-8">
-              <Link to="/" className="text-xl font-semibold text-[var(--color-text-primary)]">
+              <Link to="/daily" className="text-xl font-semibold text-[var(--color-text-primary)]">
                 Work Tracker
               </Link>
               <nav className="flex gap-1">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      "px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-colors",
-                      location.pathname === item.path
-                        ? "bg-[var(--color-bg-hover)] text-[var(--color-text-primary)]"
-                        : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]"
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={cn(
+                        "px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-[var(--color-bg-hover)] text-[var(--color-text-primary)]"
+                          : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]"
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
               </nav>
             </div>
             <div className="flex items-center gap-4">

@@ -9,6 +9,18 @@ export function setApiUser(user: { id: string; email: string } | null) {
   currentUser = user;
 }
 
+// Loading state callbacks (registered by App.tsx to connect to React context)
+let onLoadingStart: (() => void) | null = null;
+let onLoadingStop: (() => void) | null = null;
+
+export function registerLoadingCallbacks(
+  start: () => void,
+  stop: () => void
+) {
+  onLoadingStart = start;
+  onLoadingStop = stop;
+}
+
 // Types
 export interface LinearIssue {
   id: string;
@@ -108,28 +120,33 @@ async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
+  onLoadingStart?.();
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string>),
+    };
 
-  // Add user headers for authenticated requests
-  if (currentUser) {
-    headers["x-user-id"] = currentUser.id;
-    headers["x-user-email"] = currentUser.email;
+    // Add user headers for authenticated requests
+    if (currentUser) {
+      headers["x-user-id"] = currentUser.id;
+      headers["x-user-email"] = currentUser.email;
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  } finally {
+    onLoadingStop?.();
   }
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(error.error || `HTTP ${response.status}`);
-  }
-
-  return response.json();
 }
 
 // Daily Standups API
@@ -240,18 +257,23 @@ export const kudos = {
         headers["x-user-email"] = currentUser.email;
       }
 
-      const response = await fetch(`${API_BASE}/kudos`, {
-        method: "POST",
-        body: formData,
-        headers,
-      });
+      onLoadingStart?.();
+      try {
+        const response = await fetch(`${API_BASE}/kudos`, {
+          method: "POST",
+          body: formData,
+          headers,
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(error.error || `HTTP ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: "Unknown error" }));
+          throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json() as Promise<Kudo>;
+      } finally {
+        onLoadingStop?.();
       }
-
-      return response.json() as Promise<Kudo>;
     }
 
     return fetchApi<Kudo>("/kudos", {

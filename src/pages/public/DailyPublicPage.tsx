@@ -1,13 +1,24 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { dailyStandups, type DailyStandup } from "../../lib/api";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { CardLoader } from "../../components/LoadingSpinner";
-import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, timeAgo, cn } from "../../lib/utils";
+import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, groupDatesByWeek, timeAgo, cn } from "../../lib/utils";
 
 export function DailyPublicPage() {
+  const { date: dateParam } = useParams<{ date?: string }>();
+  const navigate = useNavigate();
   const [standups, setStandups] = useState<DailyStandup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(formatDate(getWeekdayDate()));
+
+  const selectedDate = dateParam || formatDate(getWeekdayDate());
+
+  // Redirect to URL with date if none provided
+  useEffect(() => {
+    if (!dateParam) {
+      navigate(`/daily/${selectedDate}`, { replace: true });
+    }
+  }, [dateParam, selectedDate, navigate]);
 
   // Fetch recent standups
   useEffect(() => {
@@ -71,46 +82,44 @@ export function DailyPublicPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Date selector sidebar */}
         <div className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Select Date</h2>
-          <div className="space-y-1">
-            {loading ? (
-              // Skeleton for date list while loading
-              Array.from({ length: 7 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-full px-3 py-2 rounded-md animate-pulse"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="h-4 bg-[var(--color-bg-active)] rounded w-24" />
-                    <div className="w-2 h-2 bg-[var(--color-bg-active)] rounded-full" />
-                  </div>
+          <div className="space-y-4">
+            {groupDatesByWeek(recentDates).map((group, groupIndex, groups) => (
+              <div key={group.weekKey}>
+                <div className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider px-3 mb-1">
+                  {group.weekLabel}
                 </div>
-              ))
-            ) : (
-              recentDates.map((date) => {
-                const hasStandup = standups.some((s) => s.date === date);
-                return (
-                  <button
-                    key={date}
-                    onClick={() => setSelectedDate(date)}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
-                      selectedDate === date
-                        ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
-                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
-                      hasStandup && selectedDate !== date && "text-[var(--color-text-primary)]"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{formatDateShort(date)}</span>
-                      {hasStandup && (
-                        <span className="w-2 h-2 bg-[var(--color-success)] rounded-full" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            )}
+                <div className="space-y-1">
+                  {group.dates.map((date) => {
+                    const hasStandup = standups.some((s) => s.date === date);
+                    return (
+                      <button
+                        key={date}
+                        onClick={() => navigate(`/daily/${date}`)}
+                        className={cn(
+                          "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
+                          selectedDate === date
+                            ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                          !loading && hasStandup && selectedDate !== date && "text-[var(--color-text-primary)]"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{formatDateShort(date)}</span>
+                          {loading ? (
+                            <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                          ) : hasStandup ? (
+                            <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {groupIndex < groups.length - 1 && (
+                  <div className="border-b border-[var(--color-border-primary)] mt-3" />
+                )}
+              </div>
+            ))}
           </div>
         </div>
 

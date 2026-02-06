@@ -81,6 +81,40 @@ export function getRelativeWeekLabel(weekStart: Date): string {
   return `In ${Math.abs(diff)} weeks`;
 }
 
+export function getWeekdayRange(dateInWeek: string): string {
+  const date = new Date(dateInWeek + "T00:00:00");
+  const monday = getWeekStart(date);
+  const friday = new Date(monday);
+  friday.setDate(friday.getDate() + 4);
+
+  const startMonth = monday.toLocaleDateString("en-US", { month: "short" });
+  const endMonth = friday.toLocaleDateString("en-US", { month: "short" });
+
+  if (startMonth === endMonth) {
+    return `${startMonth} ${monday.getDate()}-${friday.getDate()}`;
+  }
+  return `${startMonth} ${monday.getDate()} - ${endMonth} ${friday.getDate()}`;
+}
+
+export function groupDatesByWeek(dates: string[]): Array<{ weekLabel: string; weekKey: string; dates: string[] }> {
+  const groups = new Map<string, string[]>();
+
+  for (const dateStr of dates) {
+    const date = new Date(dateStr + "T00:00:00");
+    const weekKey = formatDate(getWeekStart(date));
+    if (!groups.has(weekKey)) {
+      groups.set(weekKey, []);
+    }
+    groups.get(weekKey)!.push(dateStr);
+  }
+
+  return Array.from(groups.entries()).map(([weekKey, weekDates]) => ({
+    weekLabel: getWeekdayRange(weekDates[0]),
+    weekKey,
+    dates: weekDates,
+  }));
+}
+
 export function cn(...classes: (string | undefined | false)[]): string {
   return classes.filter(Boolean).join(" ");
 }
