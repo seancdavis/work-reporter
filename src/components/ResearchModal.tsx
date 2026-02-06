@@ -26,6 +26,8 @@ export function ResearchModal({
   const [addingNote, setAddingNote] = useState(false);
   const [noteValue, setNoteValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editingNoteValue, setEditingNoteValue] = useState("");
   const [showPlannedIssueSearch, setShowPlannedIssueSearch] = useState(false);
   const [plannedIssueSearch, setPlannedIssueSearch] = useState("");
   const [plannedIssueResults, setPlannedIssueResults] = useState<LinearIssue[]>([]);
@@ -84,10 +86,11 @@ export function ResearchModal({
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (editingTitle || editingDescription || addingNote || showPlannedIssueSearch) {
+        if (editingTitle || editingDescription || addingNote || editingNoteId || showPlannedIssueSearch) {
           setEditingTitle(false);
           setEditingDescription(false);
           setAddingNote(false);
+          setEditingNoteId(null);
           setShowPlannedIssueSearch(false);
         } else {
           onClose();
@@ -96,7 +99,7 @@ export function ResearchModal({
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose, editingTitle, editingDescription, addingNote, showPlannedIssueSearch]);
+  }, [onClose, editingTitle, editingDescription, addingNote, editingNoteId, showPlannedIssueSearch]);
 
   const handleSaveTitle = async () => {
     if (!titleValue.trim()) return;
@@ -138,6 +141,29 @@ export function ResearchModal({
       setAddingNote(false);
     } catch (error) {
       console.error("Failed to add note:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStartEditNote = (note: { id: number; content: string }) => {
+    setEditingNoteId(note.id);
+    setEditingNoteValue(note.content);
+  };
+
+  const handleSaveEditNote = async () => {
+    if (!editingNoteId || !editingNoteValue.trim()) return;
+    setSaving(true);
+    try {
+      const updatedNote = await research.updateNote(item.id, editingNoteId, editingNoteValue.trim());
+      onUpdate({
+        ...item,
+        notes: item.notes.map((n) => (n.id === editingNoteId ? updatedNote : n)),
+      });
+      setEditingNoteId(null);
+      setEditingNoteValue("");
+    } catch (error) {
+      console.error("Failed to edit note:", error);
     } finally {
       setSaving(false);
     }
@@ -535,41 +561,74 @@ export function ResearchModal({
                       key={note.id}
                       className="bg-[var(--color-bg-tertiary)] rounded-md p-3 relative group"
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-[var(--color-text-tertiary)]">
-                          {timeAgo(note.created_at)}
-                        </span>
-                        {isAdmin && (
-                          <button
-                            onClick={() => handleDeleteNote(note.id)}
-                            className="text-[var(--color-text-muted)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Delete note"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                      {editingNoteId === note.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editingNoteValue}
+                            onChange={(e) => setEditingNoteValue(e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)] resize-none"
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={handleSaveEditNote} loading={saving}>
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingNoteId(null);
+                                setEditingNoteValue("");
+                              }}
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                      {note.content_html ? (
-                        <MarkdownContent
-                          html={note.content_html}
-                          className="text-sm text-[var(--color-text-secondary)]"
-                        />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
                       ) : (
-                        <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">
-                          {note.content}
-                        </p>
+                        <>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-[var(--color-text-tertiary)]">
+                              {timeAgo(note.created_at)}
+                              {note.updated_at && note.updated_at !== note.created_at && (
+                                <span className="ml-1 italic">(edited)</span>
+                              )}
+                            </span>
+                            {isAdmin && (
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handleStartEditNote(note)}
+                                  className="text-[var(--color-text-muted)] hover:text-[var(--color-accent-primary)]"
+                                  title="Edit note"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteNote(note.id)}
+                                  className="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+                                  title="Delete note"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {note.content_html ? (
+                            <MarkdownContent
+                              html={note.content_html}
+                              className="text-sm text-[var(--color-text-secondary)]"
+                            />
+                          ) : (
+                            <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">
+                              {note.content}
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   ))}

@@ -358,6 +358,12 @@ export const research = {
       body: JSON.stringify({ content }),
     }),
 
+  updateNote: (itemId: number, noteId: number, content: string) =>
+    fetchApi<ResearchNote>(`/research/${itemId}/notes/${noteId}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+
   deleteNote: (itemId: number, noteId: number) =>
     fetchApi<{ success: boolean }>(`/research/${itemId}/notes/${noteId}`, {
       method: "DELETE",

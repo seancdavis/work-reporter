@@ -254,6 +254,50 @@ export default async (request: Request, context: Context) => {
     }
   }
 
+  // PUT /api/research/:id/notes/:noteId - Update a note
+  if (request.method === "PUT" && itemIdFromPath && isNotesEndpoint && noteIdFromPath) {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Admin access required to edit notes" }, { status: 401 });
+    }
+
+    try {
+      const body = await request.json();
+      const { content } = body as { content: string };
+
+      if (!content?.trim()) {
+        return Response.json({ error: "Content is required" }, { status: 400 });
+      }
+
+      const updated = await db
+        .update(schema.researchNotes)
+        .set({
+          content: content.trim(),
+          contentHtml: parseMarkdown(content.trim()),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.researchNotes.id, noteIdFromPath))
+        .returning();
+
+      if (updated.length === 0) {
+        return Response.json({ error: "Note not found" }, { status: 404 });
+      }
+
+      const note = updated[0];
+      return Response.json({
+        id: note.id,
+        research_item_id: note.researchItemId,
+        content: note.content,
+        content_html: note.contentHtml,
+        created_at: note.createdAt,
+        updated_at: note.updatedAt,
+      });
+    } catch (error) {
+      console.error("Error updating note:", error);
+      return Response.json({ error: "Failed to update note" }, { status: 500 });
+    }
+  }
+
   // PUT /api/research/:id - Update a research item
   if (request.method === "PUT" && itemIdFromPath && !isNotesEndpoint) {
     const auth = await requireAdmin(request);
