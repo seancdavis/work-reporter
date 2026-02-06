@@ -3,7 +3,8 @@ import { db, schema } from "./_shared/db";
 import { eq, asc } from "drizzle-orm";
 import { requireAdmin } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
-import { updateIssueTitle, updateIssueDescription, addComment, updateComment } from "./_shared/linear";
+import { updateIssueTitle, updateIssueDescription, addComment, updateComment, updateIssueState, getIssueTeamId, getWorkflowStates } from "./_shared/linear";
+import { inArray } from "drizzle-orm";
 
 // Valid columns for the kanban board
 const VALID_COLUMNS = ["ideas", "exploring", "discussing", "closed"] as const;
@@ -11,6 +12,26 @@ type Column = (typeof VALID_COLUMNS)[number];
 
 function isValidColumn(column: string): column is Column {
   return VALID_COLUMNS.includes(column as Column);
+}
+
+// Column → Linear state type mapping
+const COLUMN_TO_STATE_TYPE: Record<string, string> = {
+  ideas: "unstarted",
+  exploring: "started",
+  discussing: "started",
+  closed: "completed",
+};
+
+async function getLinearStateIdForColumn(linearIssueId: string, column: string): Promise<string | null> {
+  const targetType = COLUMN_TO_STATE_TYPE[column];
+  if (!targetType) return null;
+
+  const teamId = await getIssueTeamId(linearIssueId);
+  if (!teamId) return null;
+
+  const states = await getWorkflowStates(teamId);
+  const match = states.find(s => s.type === targetType);
+  return match?.id || null;
 }
 
 // Helper to format research item for API response
@@ -454,6 +475,21 @@ export default async (request: Request, context: Context) => {
         }
       }
 
+      // Sync column change to Linear status
+      if (column !== undefined) {
+        try {
+          const stateId = await getLinearStateIdForColumn(updated[0].linearIssueId, column);
+          if (stateId) {
+            const result = await updateIssueState(updated[0].linearIssueId, stateId);
+            if (!result.success) {
+              console.warn(`Failed to sync column to Linear for ${updated[0].linearIssueIdentifier}:`, result.error);
+            }
+          }
+        } catch (err) {
+          console.warn(`Error syncing column to Linear for ${updated[0].linearIssueIdentifier}:`, err);
+        }
+      }
+
       // Fetch notes and documents for the item
       const notes = await db
         .select()
@@ -495,6 +531,15 @@ export default async (request: Request, context: Context) => {
         return Response.json({ error: "Items array required" }, { status: 400 });
       }
 
+      // Fetch current columns for items being updated (to detect changes)
+      const itemIds = items.map(i => i.id);
+      const currentItems = itemIds.length > 0
+        ? await db.select({ id: schema.researchItems.id, column: schema.researchItems.column, linearIssueId: schema.researchItems.linearIssueId, linearIssueIdentifier: schema.researchItems.linearIssueIdentifier })
+            .from(schema.researchItems)
+            .where(inArray(schema.researchItems.id, itemIds))
+        : [];
+      const currentColumnMap = new Map(currentItems.map(i => [i.id, i]));
+
       // Update each item's position
       for (const item of items) {
         if (!isValidColumn(item.column)) {
@@ -509,6 +554,24 @@ export default async (request: Request, context: Context) => {
             updatedAt: new Date(),
           })
           .where(eq(schema.researchItems.id, item.id));
+      }
+
+      // Sync column changes to Linear
+      for (const item of items) {
+        const current = currentColumnMap.get(item.id);
+        if (current && current.column !== item.column) {
+          try {
+            const stateId = await getLinearStateIdForColumn(current.linearIssueId, item.column);
+            if (stateId) {
+              const result = await updateIssueState(current.linearIssueId, stateId);
+              if (!result.success) {
+                console.warn(`Failed to sync column to Linear for ${current.linearIssueIdentifier}:`, result.error);
+              }
+            }
+          } catch (err) {
+            console.warn(`Error syncing column to Linear for ${current.linearIssueIdentifier}:`, err);
+          }
+        }
       }
 
       return Response.json({ success: true });
