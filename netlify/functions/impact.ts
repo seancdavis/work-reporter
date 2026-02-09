@@ -3,6 +3,7 @@ import { db, schema } from "./_shared/db";
 import { eq, asc, desc } from "drizzle-orm";
 import { requireAdmin } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
+import { getIssueById } from "./_shared/linear";
 
 // Helper to format impact item for API response
 function formatImpactItem(
@@ -48,6 +49,7 @@ export default async (request: Request, context: Context) => {
   const itemIdFromPath = pathParts.length >= 3 ? parseInt(pathParts[2]) : null;
   const isNotesEndpoint = pathParts.length >= 4 && pathParts[3] === "notes";
   const isLinksEndpoint = pathParts.length >= 4 && pathParts[3] === "links";
+  const isSyncFromLinearEndpoint = pathParts.length >= 4 && pathParts[3] === "sync-from-linear";
   const noteIdFromPath = pathParts.length >= 5 && isNotesEndpoint ? parseInt(pathParts[4]) : null;
   const linkIdFromPath = pathParts.length >= 5 && isLinksEndpoint ? parseInt(pathParts[4]) : null;
 
@@ -243,6 +245,70 @@ export default async (request: Request, context: Context) => {
     } catch (error) {
       console.error("Error updating impact item:", error);
       return Response.json({ error: "Failed to update impact item" }, { status: 500 });
+    }
+  }
+
+  // POST /api/impact/:id/sync-from-linear - Re-sync an impact item's Linear reference
+  if (request.method === "POST" && itemIdFromPath && isSyncFromLinearEndpoint) {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Admin access required" }, { status: 401 });
+    }
+
+    try {
+      // Fetch the current impact item
+      const items = await db
+        .select()
+        .from(schema.impactItems)
+        .where(eq(schema.impactItems.id, itemIdFromPath))
+        .limit(1);
+
+      if (items.length === 0) {
+        return Response.json({ error: "Impact item not found" }, { status: 404 });
+      }
+
+      const item = items[0];
+
+      if (!item.linearIssueId) {
+        return Response.json({ error: "This item has no linked Linear issue" }, { status: 400 });
+      }
+
+      // Fetch the latest data from Linear
+      const linearIssue = await getIssueById(item.linearIssueId);
+      if (!linearIssue) {
+        return Response.json({ error: "Could not fetch issue from Linear. It may have been deleted." }, { status: 404 });
+      }
+
+      // Update the stored Linear reference fields
+      console.log(`[Sync <-] Re-syncing impact item ${item.id} from Linear: ${item.linearIssueIdentifier} -> ${linearIssue.identifier} ("${linearIssue.title}")`);
+
+      const updated = await db
+        .update(schema.impactItems)
+        .set({
+          linearIssueIdentifier: linearIssue.identifier,
+          linearIssueTitle: linearIssue.title,
+          linearIssueUrl: linearIssue.url,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.impactItems.id, itemIdFromPath))
+        .returning();
+
+      const notes = await db
+        .select()
+        .from(schema.impactNotes)
+        .where(eq(schema.impactNotes.impactItemId, itemIdFromPath))
+        .orderBy(asc(schema.impactNotes.createdAt));
+
+      const links = await db
+        .select()
+        .from(schema.impactLinks)
+        .where(eq(schema.impactLinks.impactItemId, itemIdFromPath))
+        .orderBy(asc(schema.impactLinks.createdAt));
+
+      return Response.json(formatImpactItem(updated[0], notes, links));
+    } catch (error) {
+      console.error("Error syncing from Linear:", error);
+      return Response.json({ error: "Failed to sync from Linear" }, { status: 500 });
     }
   }
 

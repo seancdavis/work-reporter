@@ -168,6 +168,11 @@ export async function getIssuesByIds(issueIds: string[]): Promise<LinearIssue[]>
   }
 }
 
+export async function getIssueById(issueId: string): Promise<LinearIssue | null> {
+  const issues = await getIssuesByIds([issueId]);
+  return issues.length > 0 ? issues[0] : null;
+}
+
 export interface WorkflowState {
   id: string;
   name: string;
