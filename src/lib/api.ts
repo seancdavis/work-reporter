@@ -393,6 +393,11 @@ export const research = {
     fetchApi<{ success: boolean }>(`/research/${itemId}/documents/${documentId}`, {
       method: "DELETE",
     }),
+
+  syncFromLinear: (itemId: number) =>
+    fetchApi<ResearchItem>(`/research/${itemId}/sync-from-linear`, {
+      method: "POST",
+    }),
 };
 
 // Impact types
@@ -494,6 +499,11 @@ export const impact = {
   deleteLink: (itemId: number, linkId: number) =>
     fetchApi<{ success: boolean }>(`/impact/${itemId}/links/${linkId}`, {
       method: "DELETE",
+    }),
+
+  syncFromLinear: (itemId: number) =>
+    fetchApi<ImpactItem>(`/impact/${itemId}/sync-from-linear`, {
+      method: "POST",
     }),
 };
 

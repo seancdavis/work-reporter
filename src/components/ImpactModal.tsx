@@ -26,6 +26,7 @@ export function ImpactModal({
   const [addingNote, setAddingNote] = useState(false);
   const [noteValue, setNoteValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
   const [addingLink, setAddingLink] = useState(false);
@@ -256,6 +257,18 @@ export function ImpactModal({
     onDelete?.(item.id);
   };
 
+  const handleSyncFromLinear = async () => {
+    setSyncing(true);
+    try {
+      const updated = await impact.syncFromLinear(item.id);
+      onUpdate(updated);
+    } catch (error) {
+      console.error("Failed to sync from Linear:", error);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Sort notes reverse chronological (newest first)
   const sortedNotes = [...item.notes].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -353,6 +366,29 @@ export function ImpactModal({
                           />
                         </svg>
                       </a>
+                      {isAdmin && (
+                        <button
+                          onClick={handleSyncFromLinear}
+                          disabled={syncing}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-accent-primary)] hover:bg-[var(--color-bg-hover)] rounded-md transition-colors disabled:opacity-50"
+                          title="Re-sync from Linear (updates identifier, title, and URL)"
+                        >
+                          <svg
+                            className={cn("w-3.5 h-3.5", syncing && "animate-spin")}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                          </svg>
+                          {syncing ? "Syncing..." : "Sync"}
+                        </button>
+                      )}
                       {isAdmin && (
                         <button
                           onClick={handleClearLinearIssue}

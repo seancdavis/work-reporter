@@ -3,7 +3,7 @@ import { db, schema } from "./_shared/db";
 import { eq, asc } from "drizzle-orm";
 import { requireAdmin } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
-import { updateIssueTitle, updateIssueDescription, addComment, updateComment, updateIssueState, getIssueTeamId, getWorkflowStates, getIssuesByIds } from "./_shared/linear";
+import { updateIssueTitle, updateIssueDescription, addComment, updateComment, updateIssueState, getIssueTeamId, getWorkflowStates, getIssuesByIds, getIssueById } from "./_shared/linear";
 import { inArray } from "drizzle-orm";
 
 // Valid columns for the kanban board
@@ -87,6 +87,7 @@ export default async (request: Request, context: Context) => {
   const itemIdFromPath = pathParts.length >= 3 && !isSyncEndpoint ? parseInt(pathParts[2]) : null;
   const isNotesEndpoint = pathParts.length >= 4 && pathParts[3] === "notes";
   const isDocumentsEndpoint = pathParts.length >= 4 && pathParts[3] === "documents";
+  const isSyncFromLinearEndpoint = pathParts.length >= 4 && pathParts[3] === "sync-from-linear";
   const noteIdFromPath = pathParts.length >= 5 && isNotesEndpoint ? parseInt(pathParts[4]) : null;
   const documentIdFromPath = pathParts.length >= 5 && isDocumentsEndpoint ? parseInt(pathParts[4]) : null;
 
@@ -707,6 +708,71 @@ export default async (request: Request, context: Context) => {
     } catch (error) {
       console.error("Error deleting document:", error);
       return Response.json({ error: "Failed to delete document" }, { status: 500 });
+    }
+  }
+
+  // POST /api/research/:id/sync-from-linear - Re-sync a research item from Linear
+  if (request.method === "POST" && itemIdFromPath && isSyncFromLinearEndpoint) {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) {
+      return Response.json({ error: "Admin access required" }, { status: 401 });
+    }
+
+    try {
+      // Fetch the current research item
+      const items = await db
+        .select()
+        .from(schema.researchItems)
+        .where(eq(schema.researchItems.id, itemIdFromPath))
+        .limit(1);
+
+      if (items.length === 0) {
+        return Response.json({ error: "Research item not found" }, { status: 404 });
+      }
+
+      const item = items[0];
+
+      // Fetch the latest data from Linear
+      const linearIssue = await getIssueById(item.linearIssueId);
+      if (!linearIssue) {
+        return Response.json({ error: "Could not fetch issue from Linear. It may have been deleted." }, { status: 404 });
+      }
+
+      // Update the stored Linear reference fields
+      const updateData: Record<string, unknown> = {
+        linearIssueIdentifier: linearIssue.identifier,
+        linearIssueTitle: linearIssue.title,
+        linearIssueUrl: linearIssue.url,
+        linearIssuePriority: linearIssue.priority,
+        linearIssuePriorityLabel: linearIssue.priorityLabel,
+        updatedAt: new Date(),
+      };
+
+      console.log(`[Sync <-] Re-syncing research item ${item.id} from Linear: ${item.linearIssueIdentifier} -> ${linearIssue.identifier} ("${linearIssue.title}")`);
+
+      const updated = await db
+        .update(schema.researchItems)
+        .set(updateData)
+        .where(eq(schema.researchItems.id, itemIdFromPath))
+        .returning();
+
+      // Fetch notes and documents for the response
+      const notes = await db
+        .select()
+        .from(schema.researchNotes)
+        .where(eq(schema.researchNotes.researchItemId, itemIdFromPath))
+        .orderBy(asc(schema.researchNotes.createdAt));
+
+      const documents = await db
+        .select()
+        .from(schema.researchDocuments)
+        .where(eq(schema.researchDocuments.researchItemId, itemIdFromPath))
+        .orderBy(asc(schema.researchDocuments.createdAt));
+
+      return Response.json(formatResearchItem(updated[0], notes, documents));
+    } catch (error) {
+      console.error("Error syncing from Linear:", error);
+      return Response.json({ error: "Failed to sync from Linear" }, { status: 500 });
     }
   }
 
