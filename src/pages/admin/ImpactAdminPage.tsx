@@ -6,6 +6,7 @@ import { Input } from "../../components/Input";
 import { TextArea } from "../../components/TextArea";
 import { ImpactModal } from "../../components/ImpactModal";
 import { MarkdownContent } from "../../components/MarkdownContent";
+import { CardLoader } from "../../components/LoadingSpinner";
 import { formatDate, formatDateDisplay } from "../../lib/utils";
 
 export function ImpactAdminPage() {
@@ -170,7 +171,11 @@ export function ImpactAdminPage() {
 
       {/* Impact List */}
       {loading ? (
-        <p className="text-[var(--color-text-tertiary)]">Loading...</p>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <CardLoader key={i} lines={3} />
+          ))}
+        </div>
       ) : items.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-[var(--color-text-tertiary)]">No impact items recorded yet.</p>
