@@ -28,7 +28,7 @@ export function WeeklyAdminPage() {
       navigate(`/admin/weekly/${selectedWeek}`, { replace: true });
     }
   }, [weekParam, selectedWeek, navigate]);
-  const { toasts, showToast, dismissToast } = useToast();
+  const { toasts, showToast, dismissToast, dismissing } = useToast();
 
   // Preview mode
   const [isPreview, setIsPreview] = useState(false);
@@ -391,7 +391,7 @@ export function WeeklyAdminPage() {
         </div>
       </div>
 
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} dismissing={dismissing} />
     </>
   );
 }

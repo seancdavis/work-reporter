@@ -12,7 +12,7 @@ import { cn } from "../../lib/utils";
 export function ResearchAdminPage() {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
-  const { toasts, showToast, dismissToast } = useToast();
+  const { toasts, showToast, dismissToast, dismissing } = useToast();
 
   const [items, setItems] = useState<ResearchItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -312,7 +312,7 @@ export function ResearchAdminPage() {
       )}
 
       {/* Toast notifications */}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} dismissing={dismissing} />
     </div>
   );
 }
