@@ -169,8 +169,65 @@ export async function getIssuesByIds(issueIds: string[]): Promise<LinearIssue[]>
 }
 
 export async function getIssueById(issueId: string): Promise<LinearIssue | null> {
-  const issues = await getIssuesByIds([issueId]);
-  return issues.length > 0 ? issues[0] : null;
+  const apiKey = Netlify.env.get("LINEAR_API_KEY");
+  if (!apiKey) return null;
+
+  const query = `
+    query IssueById($id: String!) {
+      issue(id: $id) {
+        id
+        identifier
+        title
+        description
+        url
+        state {
+          name
+          type
+        }
+        team {
+          name
+          key
+        }
+        priority
+        priorityLabel
+        createdAt
+        updatedAt
+      }
+    }
+  `;
+
+  try {
+    const response = await fetch(LINEAR_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: apiKey,
+      },
+      body: JSON.stringify({ query, variables: { id: issueId } }),
+    });
+
+    if (!response.ok) {
+      console.error("Linear API error:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.errors) {
+      console.error("Linear GraphQL errors:", data.errors);
+      return null;
+    }
+
+    const issue = data.data?.issue || null;
+    if (issue) {
+      console.log(`[Linear <-] Fetched issue by ID: ${issue.identifier} "${issue.title}" [${issue.state.name}]`);
+    } else {
+      console.log(`[Linear <-] Issue not found for ID: ${issueId}`);
+    }
+    return issue;
+  } catch (error) {
+    console.error("Error fetching Linear issue by ID:", error);
+    return null;
+  }
 }
 
 export interface WorkflowState {
