@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { research, type ResearchItem, type ResearchColumn } from "../../lib/api";
 import { KanbanBoard } from "../../components/KanbanBoard";
 import { ResearchModal } from "../../components/ResearchModal";
+import { ClosedArchiveModal } from "../../components/ClosedArchiveModal";
 import { CardLoader } from "../../components/LoadingSpinner";
 
 export function ResearchPublicPage() {
@@ -13,6 +14,7 @@ export function ResearchPublicPage() {
   const [allItems, setAllItems] = useState<ResearchItem[]>([]); // Includes private items for direct URL access
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<ResearchItem | null>(null);
+  const [showClosedArchive, setShowClosedArchive] = useState(false);
 
   // Fetch research items
   useEffect(() => {
@@ -72,8 +74,8 @@ export function ResearchPublicPage() {
   return (
     <div className="space-y-6 max-w-full">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Research Board</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Research Board</h1>
+        <p className="text-[var(--color-text-secondary)] mt-1">
           What Sean is actively researching and thinking about.
         </p>
       </div>
@@ -85,7 +87,7 @@ export function ResearchPublicPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="text-gray-500 py-8 text-center">
+        <div className="text-[var(--color-text-tertiary)] py-8 text-center">
           No research items yet.
         </div>
       ) : (
@@ -95,6 +97,7 @@ export function ResearchPublicPage() {
           onItemUpdate={handleItemUpdate}
           onItemClick={handleItemClick}
           onItemDelete={handleItemDelete}
+          onViewClosedArchive={() => setShowClosedArchive(true)}
           isAdmin={false}
         />
       )}
@@ -107,6 +110,19 @@ export function ResearchPublicPage() {
           hideLinearBadge={isSelectedItemPrivate}
           onClose={handleCloseModal}
           onUpdate={() => {}} // No-op for public view
+        />
+      )}
+
+      {/* Closed Archive Modal */}
+      {showClosedArchive && (
+        <ClosedArchiveModal
+          items={allItems}
+          isAdmin={false}
+          onClose={() => setShowClosedArchive(false)}
+          onItemClick={(item) => {
+            setShowClosedArchive(false);
+            navigate(`/research/${item.id}`);
+          }}
         />
       )}
     </div>

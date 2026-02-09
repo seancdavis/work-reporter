@@ -113,8 +113,8 @@ export function KudosAdminPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Kudos</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Kudos</h1>
+          <p className="text-[var(--color-text-secondary)] mt-1">
             Manage recognition and positive feedback for promotion evidence.
           </p>
         </div>
@@ -125,8 +125,8 @@ export function KudosAdminPage() {
 
       {/* Add Kudo Form */}
       {showForm && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
+        <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+          <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">
             Record New Kudo
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -166,7 +166,7 @@ export function KudosAdminPage() {
 
             {/* Tags */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
                 Tags
               </label>
               {tags.length > 0 && (
@@ -174,13 +174,13 @@ export function KudosAdminPage() {
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 text-sm rounded-md"
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] text-sm rounded-md"
                     >
                       {tag}
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
-                        className="text-purple-500 hover:text-purple-700"
+                        className="text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)]"
                       >
                         <svg
                           className="w-4 h-4"
@@ -220,17 +220,17 @@ export function KudosAdminPage() {
 
             {/* Screenshot upload */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
                 Screenshot (optional)
               </label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => setScreenshot(e.target.files?.[0] || null)}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="block w-full text-sm text-[var(--color-text-tertiary)] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-[var(--color-accent-secondary)] file:text-[var(--color-accent-text)] hover:file:bg-[var(--color-bg-hover)]"
               />
               {screenshot && (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-[var(--color-text-tertiary)]">
                   Selected: {screenshot.name}
                 </p>
               )}
@@ -257,10 +257,10 @@ export function KudosAdminPage() {
 
       {/* Kudos List */}
       {loading ? (
-        <p className="text-gray-500">Loading...</p>
+        <p className="text-[var(--color-text-tertiary)]">Loading...</p>
       ) : kudosList.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">No kudos recorded yet.</p>
+          <p className="text-[var(--color-text-tertiary)]">No kudos recorded yet.</p>
           <Button className="mt-4" onClick={() => setShowForm(true)}>
             Add Your First Kudo
           </Button>
@@ -269,28 +269,28 @@ export function KudosAdminPage() {
         <div className="space-y-8">
           {years.map((year) => (
             <div key={year}>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">{year}</h2>
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">{year}</h2>
               <div className="space-y-4">
                 {kudosByYear[year].map((kudo) => (
                   <div
                     key={kudo.id}
-                    className="bg-white rounded-lg border border-gray-200 p-6"
+                    className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-[var(--color-text-primary)]">
                             {kudo.sender_name}
                           </span>
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-[var(--color-text-tertiary)]">
                             {formatDateDisplay(kudo.received_date)}
                           </span>
                         </div>
-                        <p className="text-gray-700 whitespace-pre-wrap">
+                        <p className="text-[var(--color-text-secondary)] whitespace-pre-wrap">
                           {kudo.message}
                         </p>
                         {kudo.context && (
-                          <p className="mt-2 text-sm text-gray-500 italic">
+                          <p className="mt-2 text-sm text-[var(--color-text-tertiary)] italic">
                             Context: {kudo.context}
                           </p>
                         )}
@@ -299,7 +299,7 @@ export function KudosAdminPage() {
                             {kudo.tags.map((tag) => (
                               <span
                                 key={tag}
-                                className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded"
+                                className="text-xs bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] px-2 py-0.5 rounded"
                               >
                                 {tag}
                               </span>
@@ -311,14 +311,14 @@ export function KudosAdminPage() {
                             <img
                               src={kudosApi.getScreenshotUrl(kudo.screenshot_blob_key)}
                               alt="Screenshot"
-                              className="max-w-md rounded-lg border border-gray-200"
+                              className="max-w-md rounded-lg border border-[var(--color-border-primary)]"
                             />
                           </div>
                         )}
                       </div>
                       <button
                         onClick={() => handleDelete(kudo.id)}
-                        className="text-gray-400 hover:text-red-500"
+                        className="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
                       >
                         <svg
                           className="w-5 h-5"

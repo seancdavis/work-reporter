@@ -1,28 +1,44 @@
 import { useState, useEffect } from "react";
-import { Eye, Edit3, Sparkles } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Eye, Edit3, Sparkles, Download, X } from "lucide-react";
 import { weeklyReports, dailyStandups, weeklyStandups, type WeeklyReport, type DailyStandup, type WeeklyStandup } from "../../lib/api";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/TextArea";
+import { IssueSelector } from "../../components/IssueSelector";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { AICleanupButton } from "../../components/AICleanupButton";
+import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
+import { useDraftStorage } from "../../hooks/useDraftStorage";
 import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn } from "../../lib/utils";
 
 export function ReportsAdminPage() {
+  const { week: weekParam } = useParams<{ week?: string }>();
+  const navigate = useNavigate();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [dailyData, setDailyData] = useState<DailyStandup[]>([]);
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyStandup | null>(null);
-  const [, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState(formatDate(getWeekStart()));
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const selectedWeek = weekParam || formatDate(getWeekStart());
+
+  // Redirect to URL with week if none provided
+  useEffect(() => {
+    if (!weekParam) {
+      navigate(`/admin/reports/${selectedWeek}`, { replace: true });
+    }
+  }, [weekParam, selectedWeek, navigate]);
   const [generating, setGenerating] = useState(false);
   const { toasts, showToast, dismissToast } = useToast();
 
-  // Form state
-  const [summary, setSummary] = useState("");
-
   // Preview mode
   const [isPreview, setIsPreview] = useState(false);
+
+  // Linked issues state
+  const [linkedIssues, setLinkedIssues] = useState<
+    Array<{ id: string; identifier: string; title: string }>
+  >([]);
 
   // Fetch reports, daily standups, and weekly planning
   useEffect(() => {
@@ -46,16 +62,19 @@ export function ReportsAdminPage() {
     fetch();
   }, [selectedWeek]);
 
-  // Load selected week's report
+  const currentReport = reports.find((r) => r.week_start === selectedWeek);
+
+  // Draft storage for summary field
+  const summaryDraft = useDraftStorage({
+    key: `draft:reports:${selectedWeek}:summary`,
+    savedValue: currentReport?.summary || "",
+  });
+
+  // Reset preview mode and load linked issues when changing weeks
   useEffect(() => {
-    const report = reports.find((r) => r.week_start === selectedWeek);
-    if (report) {
-      setSummary(report.summary || "");
-    } else {
-      setSummary("");
-    }
-    // Reset preview mode when changing weeks
     setIsPreview(false);
+    const report = reports.find((r) => r.week_start === selectedWeek);
+    setLinkedIssues(report?.linked_issues || []);
   }, [selectedWeek, reports]);
 
   const handleSave = async () => {
@@ -63,7 +82,8 @@ export function ReportsAdminPage() {
     try {
       const saved = await weeklyReports.save({
         week_start: selectedWeek,
-        summary: summary || undefined,
+        summary: summaryDraft.draftValue || undefined,
+        linked_issues: linkedIssues,
       });
 
       setReports((prev) => {
@@ -76,6 +96,8 @@ export function ReportsAdminPage() {
             new Date(b.week_start).getTime() - new Date(a.week_start).getTime()
         );
       });
+
+      summaryDraft.clearDraft();
       showToast("success", "Weekly report saved successfully");
     } catch (error) {
       console.error("Failed to save report:", error);
@@ -89,13 +111,39 @@ export function ReportsAdminPage() {
     setGenerating(true);
     try {
       const result = await weeklyReports.generate(selectedWeek);
-      setSummary(result.generated);
+      summaryDraft.setDraftValue(result.generated);
       showToast("success", "AI summary generated - review and save when ready");
     } catch (error) {
       console.error("Failed to generate report:", error);
       showToast("error", "Failed to generate report. Make sure you have daily standups for this week.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const removeIssue = (issueId: string) => {
+    setLinkedIssues(linkedIssues.filter((i) => i.id !== issueId));
+  };
+
+  // Get unique issues from this week's daily standups
+  const getStandupIssues = () => {
+    const issueMap = new Map<string, { id: string; identifier: string; title: string }>();
+    for (const standup of dailyData) {
+      for (const issue of standup.linked_issues || []) {
+        if (!issueMap.has(issue.id)) {
+          issueMap.set(issue.id, issue);
+        }
+      }
+    }
+    return Array.from(issueMap.values());
+  };
+
+  const pullIssuesFromStandups = () => {
+    const standupIssues = getStandupIssues();
+    if (standupIssues.length > 0) {
+      const existingIds = new Set(linkedIssues.map((i) => i.id));
+      const newIssues = standupIssues.filter((i) => !existingIds.has(i.id));
+      setLinkedIssues([...linkedIssues, ...newIssues]);
     }
   };
 
@@ -106,15 +154,14 @@ export function ReportsAdminPage() {
     return formatDate(getWeekStart(date));
   });
 
-  const currentReport = reports.find((r) => r.week_start === selectedWeek);
   const hasSavedContent = !!currentReport?.summary_html;
 
   return (
     <>
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Weekly Reports</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Weekly Reports</h1>
+          <p className="text-[var(--color-text-secondary)] mt-1">
             Summarize your weekly accomplishments for stakeholders.
           </p>
         </div>
@@ -122,7 +169,6 @@ export function ReportsAdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Week selector sidebar */}
           <div className="lg:col-span-1">
-            <h2 className="text-sm font-medium text-gray-700 mb-3">Select Week</h2>
             <div className="space-y-1">
               {recentWeeks.map((weekStart) => {
                 const hasReport = reports.some((r) => r.week_start === weekStart);
@@ -130,25 +176,27 @@ export function ReportsAdminPage() {
                 return (
                   <button
                     key={weekStart}
-                    onClick={() => setSelectedWeek(weekStart)}
+                    onClick={() => navigate(`/admin/reports/${weekStart}`)}
                     className={cn(
                       "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                       selectedWeek === weekStart
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : "text-gray-700 hover:bg-gray-50",
-                      hasReport && selectedWeek !== weekStart && "text-gray-900"
+                        ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                      !loading && hasReport && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <div>{getRelativeWeekLabel(weekStartDate)}</div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-[var(--color-text-tertiary)]">
                           {getWeekRange(weekStartDate)}
                         </div>
                       </div>
-                      {hasReport && (
-                        <span className="w-2 h-2 bg-green-500 rounded-full" />
-                      )}
+                      {loading ? (
+                        <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                      ) : hasReport ? (
+                        <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                      ) : null}
                     </div>
                   </button>
                 );
@@ -158,19 +206,23 @@ export function ReportsAdminPage() {
 
           {/* Main content */}
           <div className="lg:col-span-3 space-y-6">
+            {loading ? (
+              <CardLoader lines={4} />
+            ) : (
+            <>
             {/* Summary textarea */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-1">
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-1">
                 Weekly Report: {getRelativeWeekLabel(new Date(selectedWeek + "T00:00:00"))}
               </h2>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-[var(--color-text-tertiary)] mb-6">
                 {getWeekRange(new Date(selectedWeek + "T00:00:00"))}
               </p>
 
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
                       Summary
                     </label>
                     <div className="flex items-center gap-2">
@@ -181,8 +233,8 @@ export function ReportsAdminPage() {
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors",
                             isPreview
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)]"
+                              : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)]"
                           )}
                         >
                           {isPreview ? (
@@ -207,8 +259,8 @@ export function ReportsAdminPage() {
                             className={cn(
                               "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors",
                               generating || dailyData.length === 0
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                                ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] cursor-not-allowed"
+                                : "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] hover:bg-[var(--color-bg-active)]"
                             )}
                           >
                             <Sparkles className="w-3 h-3" />
@@ -216,8 +268,8 @@ export function ReportsAdminPage() {
                           </button>
                           <AICleanupButton
                             field="weekly_report"
-                            content={summary}
-                            onCleanup={setSummary}
+                            content={summaryDraft.draftValue}
+                            onCleanup={summaryDraft.setDraftValue}
                           />
                         </>
                       )}
@@ -225,24 +277,29 @@ export function ReportsAdminPage() {
                   </div>
                   {isPreview ? (
                     <div className="space-y-3">
-                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
                         Weekly Summary
                       </h3>
-                      <div className="pl-4 border-l-2 border-gray-200">
+                      <div className="pl-4 border-l-2 border-[var(--color-border-primary)]">
                         <MarkdownContent html={currentReport?.summary_html || ""} />
                       </div>
                     </div>
                   ) : (
                     <TextArea
-                      value={summary}
-                      onChange={(e) => setSummary(e.target.value)}
+                      value={summaryDraft.draftValue}
+                      onChange={(e) => summaryDraft.setDraftValue(e.target.value)}
                       placeholder="Write or generate a summary of your week's accomplishments..."
                       rows={6}
                     />
                   )}
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex items-center justify-end gap-3">
+                  {summaryDraft.hasDraft && (
+                    <span className="text-xs text-[var(--color-warning-text)] bg-[var(--color-warning-bg)] px-2 py-1 rounded-[var(--radius-sm)]">
+                      Unsaved draft
+                    </span>
+                  )}
                   <Button onClick={handleSave} loading={saving}>
                     Save Report
                   </Button>
@@ -250,26 +307,79 @@ export function ReportsAdminPage() {
               </div>
             </div>
 
+            {/* Linked Issues */}
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
+                  Linked Issues
+                </h2>
+                {dailyData.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={pullIssuesFromStandups}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)] transition-colors"
+                  >
+                    <Download className="w-3 h-3" />
+                    Pull from standups
+                  </button>
+                )}
+              </div>
+
+              <IssueSelector
+                selectedIssues={linkedIssues}
+                onSelect={setLinkedIssues}
+                hideLabel
+                hideSelectedDisplay
+              />
+
+              {linkedIssues.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {linkedIssues.map((issue) => (
+                    <div
+                      key={issue.id}
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border bg-[var(--color-accent-secondary)] border-[var(--color-border-primary)]"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium text-sm whitespace-nowrap text-[var(--color-accent-text)]">
+                          {issue.identifier}
+                        </span>
+                        <span className="text-sm truncate text-[var(--color-accent-primary)]">
+                          {issue.title}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeIssue(issue.id)}
+                        className="flex-shrink-0 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Weekly Planning Context */}
             {weeklyPlan && weeklyPlan.planned_accomplishments_html && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">
+              <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+                <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">
                   What Was Planned This Week
                 </h2>
-                <div className="pl-4 border-l-2 border-blue-200">
+                <div className="pl-4 border-l-2 border-[var(--color-accent-primary)]/30">
                   <MarkdownContent html={weeklyPlan.planned_accomplishments_html} />
                 </div>
               </div>
             )}
 
             {/* Daily standups summary */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">
                 Daily Standups
               </h2>
 
               {dailyData.length === 0 ? (
-                <p className="text-gray-500 text-sm">
+                <p className="text-[var(--color-text-tertiary)] text-sm">
                   No daily standups recorded for this week.
                 </p>
               ) : (
@@ -277,18 +387,18 @@ export function ReportsAdminPage() {
                   {dailyData.map((standup) => (
                     <div
                       key={standup.date}
-                      className="border-l-2 border-gray-200 pl-4"
+                      className="border-l-2 border-[var(--color-border-primary)] pl-4"
                     >
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">
+                      <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
                         {formatDateShort(standup.date)}
                       </h3>
 
                       {standup.yesterday_summary_html && (
                         <div className="mb-2">
-                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <span className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
                             What was accomplished
                           </span>
-                          <div className="mt-1 text-sm text-gray-700">
+                          <div className="mt-1 text-sm text-[var(--color-text-secondary)]">
                             <MarkdownContent html={standup.yesterday_summary_html} />
                           </div>
                         </div>
@@ -296,10 +406,10 @@ export function ReportsAdminPage() {
 
                       {standup.today_plan_html && (
                         <div className="mb-2">
-                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <span className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
                             What was planned
                           </span>
-                          <div className="mt-1 text-sm text-gray-600">
+                          <div className="mt-1 text-sm text-[var(--color-text-secondary)]">
                             <MarkdownContent html={standup.today_plan_html} />
                           </div>
                         </div>
@@ -310,7 +420,7 @@ export function ReportsAdminPage() {
                           {standup.linked_issues.map((issue) => (
                             <span
                               key={issue.id}
-                              className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded"
+                              className="text-xs bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] px-2 py-0.5 rounded"
                               title={issue.title}
                             >
                               {issue.identifier}
@@ -323,6 +433,8 @@ export function ReportsAdminPage() {
                 </div>
               )}
             </div>
+            </>
+            )}
           </div>
         </div>
       </div>

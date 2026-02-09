@@ -39,6 +39,7 @@ export default async (request: Request, context: Context) => {
         week_start: r.weekStart,
         summary: r.summary,
         summary_html: r.summaryHtml,
+        linked_issues: r.linkedIssues || [],
         created_at: r.createdAt,
         updated_at: r.updatedAt,
       }));
@@ -118,9 +119,10 @@ export default async (request: Request, context: Context) => {
 
     try {
       const body = await request.json();
-      const { week_start, summary } = body as {
+      const { week_start, summary, linked_issues } = body as {
         week_start: string;
         summary?: string;
+        linked_issues?: Array<{ id: string; identifier: string; title: string }>;
       };
 
       if (!week_start) {
@@ -145,6 +147,7 @@ export default async (request: Request, context: Context) => {
           .set({
             summary: summary || null,
             summaryHtml: summaryHtml,
+            linkedIssues: linked_issues || [],
             updatedAt: new Date(),
           })
           .where(eq(schema.weeklyReports.weekStart, week_start))
@@ -158,6 +161,7 @@ export default async (request: Request, context: Context) => {
             weekStart: week_start,
             summary: summary || null,
             summaryHtml: summaryHtml,
+            linkedIssues: linked_issues || [],
           })
           .returning();
         result = inserted[0];
@@ -168,6 +172,7 @@ export default async (request: Request, context: Context) => {
         week_start: result.weekStart,
         summary: result.summary,
         summary_html: result.summaryHtml,
+        linked_issues: result.linkedIssues || [],
         created_at: result.createdAt,
         updated_at: result.updatedAt,
       });

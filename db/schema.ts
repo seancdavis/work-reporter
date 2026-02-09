@@ -29,6 +29,7 @@ export const weeklyReports = pgTable('weekly_reports', {
   weekStart: date('week_start').notNull().unique(),
   summary: text('summary'),
   summaryHtml: text('summary_html'),
+  linkedIssues: jsonb('linked_issues').default([]),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -55,7 +56,9 @@ export const researchItems = pgTable('research_items', {
   title: text('title').notNull(), // Editable title (initially from Linear)
   description: text('description'), // Editable markdown description
   descriptionHtml: text('description_html'), // Pre-rendered HTML
-  column: text('column').notNull().default('ideas'), // ideas, exploring, planned, implemented, closed
+  column: text('column').notNull().default('ideas'), // ideas, exploring, discussing, closed
+  linearIssuePriority: integer('linear_issue_priority'),
+  linearIssuePriorityLabel: text('linear_issue_priority_label'),
   displayOrder: integer('display_order').notNull().default(0),
   plannedIssueId: text('planned_issue_id'), // Linear issue for implementation work
   plannedIssueIdentifier: text('planned_issue_identifier'),
@@ -71,5 +74,50 @@ export const researchNotes = pgTable('research_notes', {
   researchItemId: integer('research_item_id').notNull().references(() => researchItems.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
   contentHtml: text('content_html'),
+  linearCommentId: text('linear_comment_id'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at'),
+});
+
+// Research item documents - linked URLs for each research item
+export const researchDocuments = pgTable('research_documents', {
+  id: serial('id').primaryKey(),
+  researchItemId: integer('research_item_id').notNull().references(() => researchItems.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  title: text('title').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Impact/Work Shipped items - track shipped work for promotion evidence
+export const impactItems = pgTable('impact_items', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  description: text('description'),
+  descriptionHtml: text('description_html'),
+  shippedDate: date('shipped_date').notNull(),
+  linearIssueId: text('linear_issue_id'),
+  linearIssueIdentifier: text('linear_issue_identifier'),
+  linearIssueTitle: text('linear_issue_title'),
+  linearIssueUrl: text('linear_issue_url'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Impact item notes - timestamped notes for each impact item
+export const impactNotes = pgTable('impact_notes', {
+  id: serial('id').primaryKey(),
+  impactItemId: integer('impact_item_id').notNull().references(() => impactItems.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  contentHtml: text('content_html'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at'),
+});
+
+// Impact item links - URL + label pairs for each impact item
+export const impactLinks = pgTable('impact_links', {
+  id: serial('id').primaryKey(),
+  impactItemId: integer('impact_item_id').notNull().references(() => impactItems.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  label: text('label').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 });

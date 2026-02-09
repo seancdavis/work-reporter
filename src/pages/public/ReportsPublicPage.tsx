@@ -1,25 +1,32 @@
 import { useState, useEffect } from "react";
-import { weeklyReports, dailyStandups, type WeeklyReport, type DailyStandup } from "../../lib/api";
+import { useParams, useNavigate } from "react-router-dom";
+import { weeklyReports, type WeeklyReport } from "../../lib/api";
 import { MarkdownContent } from "../../components/MarkdownContent";
-import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, formatDateShort, cn, timeAgo } from "../../lib/utils";
+import { CardLoader } from "../../components/LoadingSpinner";
+import { formatDate, getWeekStart, getWeekRange, getRelativeWeekLabel, cn, timeAgo } from "../../lib/utils";
 
 export function ReportsPublicPage() {
+  const { week: weekParam } = useParams<{ week?: string }>();
+  const navigate = useNavigate();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
-  const [dailyData, setDailyData] = useState<DailyStandup[]>([]);
-  const [, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState(formatDate(getWeekStart()));
+  const [loading, setLoading] = useState(true);
 
-  // Fetch reports and daily standups
+  const selectedWeek = weekParam || formatDate(getWeekStart());
+
+  // Redirect to URL with week if none provided
+  useEffect(() => {
+    if (!weekParam) {
+      navigate(`/reports/${selectedWeek}`, { replace: true });
+    }
+  }, [weekParam, selectedWeek, navigate]);
+
+  // Fetch reports
   useEffect(() => {
     async function fetch() {
       setLoading(true);
       try {
-        const [reportsData, dailyDataResult] = await Promise.all([
-          weeklyReports.list(),
-          dailyStandups.list({ week: selectedWeek }),
-        ]);
+        const reportsData = await weeklyReports.list();
         setReports(reportsData);
-        setDailyData(dailyDataResult);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -42,13 +49,15 @@ export function ReportsPublicPage() {
   const filterIssues = (issues: Array<{ id: string; identifier: string; title: string }>) =>
     issues.filter((issue) => !issue.identifier.startsWith("SCD-"));
 
+  const visibleLinkedIssues = filterIssues(currentReport?.linked_issues || []);
+
   // Section component for consistent styling
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
         {title}
       </h3>
-      <div className="pl-4 border-l-2 border-gray-200">
+      <div className="pl-4 border-l-2 border-[var(--color-border-primary)]">
         {children}
       </div>
     </div>
@@ -57,8 +66,8 @@ export function ReportsPublicPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Weekly Reports</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Weekly Reports</h1>
+        <p className="text-[var(--color-text-secondary)] mt-1">
           Summaries of weekly accomplishments.
         </p>
       </div>
@@ -66,7 +75,6 @@ export function ReportsPublicPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Week selector sidebar */}
         <div className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-gray-700 mb-3">Select Week</h2>
           <div className="space-y-1">
             {recentWeeks.map((weekStart) => {
               const hasReport = reports.some((r) => r.week_start === weekStart);
@@ -74,25 +82,27 @@ export function ReportsPublicPage() {
               return (
                 <button
                   key={weekStart}
-                  onClick={() => setSelectedWeek(weekStart)}
+                  onClick={() => navigate(`/reports/${weekStart}`)}
                   className={cn(
                     "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
                     selectedWeek === weekStart
-                      ? "bg-blue-50 text-blue-700 font-medium"
-                      : "text-gray-700 hover:bg-gray-50",
-                    hasReport && selectedWeek !== weekStart && "text-gray-900"
+                      ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                    !loading && hasReport && selectedWeek !== weekStart && "text-[var(--color-text-primary)]"
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <div>
                       <div>{getRelativeWeekLabel(weekStartDate)}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-[var(--color-text-tertiary)]">
                         {getWeekRange(weekStartDate)}
                       </div>
                     </div>
-                    {hasReport && (
-                      <span className="w-2 h-2 bg-green-500 rounded-full" />
-                    )}
+                    {loading ? (
+                      <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                    ) : hasReport ? (
+                      <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                    ) : null}
                   </div>
                 </button>
               );
@@ -102,21 +112,25 @@ export function ReportsPublicPage() {
 
         {/* Main content */}
         <div className="lg:col-span-3 space-y-6">
+          {loading ? (
+            <CardLoader lines={4} />
+          ) : (
+          <>
           {/* Weekly Summary */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
             <div className="flex items-baseline justify-between mb-6">
-              <h2 className="text-lg font-medium text-gray-900">
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
                 {getRelativeWeekLabel(new Date(selectedWeek + "T00:00:00"))}
               </h2>
               {currentReport && (
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-[var(--color-text-muted)]">
                   Updated {timeAgo(currentReport.updated_at)}
                 </span>
               )}
             </div>
 
             {!currentReport || !currentReport.summary_html ? (
-              <p className="text-gray-500 text-sm py-4">
+              <p className="text-[var(--color-text-tertiary)] text-sm py-4">
                 No summary for this week yet.
               </p>
             ) : (
@@ -126,54 +140,29 @@ export function ReportsPublicPage() {
             )}
           </div>
 
-          {/* Daily standups summary */}
-          {dailyData.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                Daily Standups
-              </h2>
-
-              <div className="space-y-6">
-                {dailyData.map((standup) => {
-                  const visibleIssues = filterIssues(standup.linked_issues);
-                  return (
+          {/* Linked Issues */}
+          {visibleLinkedIssues.length > 0 && (
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+              <Section title="Linked Issues">
+                <div className="space-y-2">
+                  {visibleLinkedIssues.map((issue) => (
                     <div
-                      key={standup.date}
-                      className="border-l-2 border-gray-200 pl-4"
+                      key={issue.id}
+                      className="flex items-center gap-2 text-sm"
                     >
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">
-                        {formatDateShort(standup.date)}
-                      </h3>
-
-                      {standup.yesterday_summary_html && (
-                        <div className="mb-2">
-                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            What was accomplished
-                          </span>
-                          <div className="mt-1 text-sm text-gray-700">
-                            <MarkdownContent html={standup.yesterday_summary_html} />
-                          </div>
-                        </div>
-                      )}
-
-                      {visibleIssues.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {visibleIssues.map((issue) => (
-                            <span
-                              key={issue.id}
-                              className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded"
-                              title={issue.title}
-                            >
-                              {issue.identifier}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <span className="font-medium text-[var(--color-accent-text)] bg-[var(--color-accent-secondary)] px-2 py-0.5 rounded whitespace-nowrap">
+                        {issue.identifier}
+                      </span>
+                      <span className="text-[var(--color-text-secondary)] truncate">
+                        {issue.title}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              </Section>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>

@@ -43,11 +43,6 @@ Your job is to:
 ${content}`;
 
     const cleaned = await generateAIResponse(systemPrompt, userMessage);
-
-    if (!cleaned) {
-      return Response.json({ error: "AI processing failed" }, { status: 500 });
-    }
-
     return Response.json({ cleaned: cleaned.trim() });
   } catch (error) {
     console.error("Error in AI cleanup:", error);

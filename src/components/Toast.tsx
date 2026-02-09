@@ -19,10 +19,10 @@ export function useToast() {
     const id = ++toastId;
     setToasts((prev) => [...prev, { id, type, message }]);
 
-    // Auto-dismiss after 4 seconds
+    // Auto-dismiss after 6 seconds
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 6000);
   }, []);
 
   const dismissToast = useCallback((id: number) => {
@@ -70,19 +70,19 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border transition-all duration-150",
+        "flex items-center gap-3 px-4 py-3 rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border transition-all duration-150",
         toast.type === "success"
-          ? "bg-green-50 border-green-200 text-green-800"
-          : "bg-red-50 border-red-200 text-red-800",
+          ? "bg-[var(--color-success-bg)] border-[var(--color-success)] text-[var(--color-success-text)]"
+          : "bg-[var(--color-danger-bg)] border-[var(--color-danger)] text-[var(--color-danger-text)]",
         isVisible
           ? "opacity-100 translate-x-0"
           : "opacity-0 translate-x-4"
       )}
     >
       {toast.type === "success" ? (
-        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <CheckCircle className="w-5 h-5 text-[var(--color-success)] flex-shrink-0" />
       ) : (
-        <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+        <XCircle className="w-5 h-5 text-[var(--color-danger)] flex-shrink-0" />
       )}
       <span className="text-sm font-medium">{toast.message}</span>
       <button
@@ -90,8 +90,8 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
         className={cn(
           "ml-2 p-1 rounded-full transition-colors flex-shrink-0",
           toast.type === "success"
-            ? "hover:bg-green-100 text-green-600"
-            : "hover:bg-red-100 text-red-600"
+            ? "hover:bg-[var(--color-success)]/20 text-[var(--color-success)]"
+            : "hover:bg-[var(--color-danger)]/20 text-[var(--color-danger)]"
         )}
       >
         <X className="w-4 h-4" />

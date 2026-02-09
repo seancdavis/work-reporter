@@ -9,6 +9,18 @@ export function setApiUser(user: { id: string; email: string } | null) {
   currentUser = user;
 }
 
+// Loading state callbacks (registered by App.tsx to connect to React context)
+let onLoadingStart: (() => void) | null = null;
+let onLoadingStop: (() => void) | null = null;
+
+export function registerLoadingCallbacks(
+  start: () => void,
+  stop: () => void
+) {
+  onLoadingStart = start;
+  onLoadingStop = stop;
+}
+
 // Types
 export interface LinearIssue {
   id: string;
@@ -57,6 +69,7 @@ export interface WeeklyReport {
   week_start: string;
   summary: string | null;
   summary_html: string | null;
+  linked_issues: Array<{ id: string; identifier: string; title: string }>;
   created_at: string;
   updated_at: string;
 }
@@ -73,13 +86,23 @@ export interface Kudo {
   updated_at: string;
 }
 
-export type ResearchColumn = "ideas" | "exploring" | "planned" | "implemented" | "closed";
+export type ResearchColumn = "ideas" | "exploring" | "discussing" | "closed";
 
 export interface ResearchNote {
   id: number;
   research_item_id: number;
   content: string;
   content_html: string | null;
+  linear_comment_id: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ResearchDocument {
+  id: number;
+  research_item_id: number;
+  url: string;
+  title: string;
   created_at: string;
 }
 
@@ -98,7 +121,10 @@ export interface ResearchItem {
   planned_issue_identifier: string | null;
   planned_issue_title: string | null;
   planned_issue_url: string | null;
+  linear_issue_priority: number | null;
+  linear_issue_priority_label: string | null;
   notes: ResearchNote[];
+  documents: ResearchDocument[];
   created_at: string;
   updated_at: string;
 }
@@ -108,28 +134,33 @@ async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
+  onLoadingStart?.();
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string>),
+    };
 
-  // Add user headers for authenticated requests
-  if (currentUser) {
-    headers["x-user-id"] = currentUser.id;
-    headers["x-user-email"] = currentUser.email;
+    // Add user headers for authenticated requests
+    if (currentUser) {
+      headers["x-user-id"] = currentUser.id;
+      headers["x-user-email"] = currentUser.email;
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  } finally {
+    onLoadingStop?.();
   }
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(error.error || `HTTP ${response.status}`);
-  }
-
-  return response.json();
 }
 
 // Daily Standups API
@@ -199,6 +230,7 @@ export const weeklyReports = {
   save: (data: {
     week_start: string;
     summary?: string;
+    linked_issues?: Array<{ id: string; identifier: string; title: string }>;
   }) =>
     fetchApi<WeeklyReport>("/weekly-reports", {
       method: "POST",
@@ -240,18 +272,23 @@ export const kudos = {
         headers["x-user-email"] = currentUser.email;
       }
 
-      const response = await fetch(`${API_BASE}/kudos`, {
-        method: "POST",
-        body: formData,
-        headers,
-      });
+      onLoadingStart?.();
+      try {
+        const response = await fetch(`${API_BASE}/kudos`, {
+          method: "POST",
+          body: formData,
+          headers,
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(error.error || `HTTP ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: "Unknown error" }));
+          throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json() as Promise<Kudo>;
+      } finally {
+        onLoadingStop?.();
       }
-
-      return response.json() as Promise<Kudo>;
     }
 
     return fetchApi<Kudo>("/kudos", {
@@ -297,6 +334,8 @@ export const research = {
         linear_issue_title: issue.title,
         linear_issue_url: issue.url,
         linear_issue_description: issue.description,
+        linear_issue_priority: issue.priority,
+        linear_issue_priority_label: issue.priorityLabel,
         column,
       }),
     }),
@@ -333,8 +372,127 @@ export const research = {
       body: JSON.stringify({ content }),
     }),
 
+  updateNote: (itemId: number, noteId: number, content: string) =>
+    fetchApi<ResearchNote>(`/research/${itemId}/notes/${noteId}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+
   deleteNote: (itemId: number, noteId: number) =>
     fetchApi<{ success: boolean }>(`/research/${itemId}/notes/${noteId}`, {
+      method: "DELETE",
+    }),
+
+  addDocument: (itemId: number, url: string, title: string) =>
+    fetchApi<ResearchDocument>(`/research/${itemId}/documents`, {
+      method: "POST",
+      body: JSON.stringify({ url, title }),
+    }),
+
+  deleteDocument: (itemId: number, documentId: number) =>
+    fetchApi<{ success: boolean }>(`/research/${itemId}/documents/${documentId}`, {
+      method: "DELETE",
+    }),
+};
+
+// Impact types
+export interface ImpactNote {
+  id: number;
+  impact_item_id: number;
+  content: string;
+  content_html: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ImpactLink {
+  id: number;
+  impact_item_id: number;
+  url: string;
+  label: string;
+  created_at: string;
+}
+
+export interface ImpactItem {
+  id: number;
+  title: string;
+  description: string | null;
+  description_html: string | null;
+  shipped_date: string;
+  linear_issue_id: string | null;
+  linear_issue_identifier: string | null;
+  linear_issue_title: string | null;
+  linear_issue_url: string | null;
+  notes: ImpactNote[];
+  links: ImpactLink[];
+  created_at: string;
+  updated_at: string;
+}
+
+// Impact API
+export const impact = {
+  list: () => fetchApi<ImpactItem[]>("/impact"),
+
+  get: (id: number) => fetchApi<ImpactItem>(`/impact/${id}`),
+
+  create: (data: {
+    title: string;
+    description?: string;
+    shipped_date: string;
+    linear_issue_id?: string;
+    linear_issue_identifier?: string;
+    linear_issue_title?: string;
+    linear_issue_url?: string;
+  }) =>
+    fetchApi<ImpactItem>("/impact", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: number, data: {
+    title?: string;
+    description?: string;
+    shipped_date?: string;
+    linear_issue_id?: string | null;
+    linear_issue_identifier?: string | null;
+    linear_issue_title?: string | null;
+    linear_issue_url?: string | null;
+  }) =>
+    fetchApi<ImpactItem>(`/impact/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: number) =>
+    fetchApi<{ success: boolean }>(`/impact/${id}`, {
+      method: "DELETE",
+    }),
+
+  addNote: (itemId: number, content: string) =>
+    fetchApi<ImpactNote>(`/impact/${itemId}/notes`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+
+  updateNote: (itemId: number, noteId: number, content: string) =>
+    fetchApi<ImpactNote>(`/impact/${itemId}/notes/${noteId}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+
+  deleteNote: (itemId: number, noteId: number) =>
+    fetchApi<{ success: boolean }>(`/impact/${itemId}/notes/${noteId}`, {
+      method: "DELETE",
+    }),
+
+  addLink: (itemId: number, url: string, label: string) =>
+    fetchApi<ImpactLink>(`/impact/${itemId}/links`, {
+      method: "POST",
+      body: JSON.stringify({ url, label }),
+    }),
+
+  deleteLink: (itemId: number, linkId: number) =>
+    fetchApi<{ success: boolean }>(`/impact/${itemId}/links/${linkId}`, {
       method: "DELETE",
     }),
 };

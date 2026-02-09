@@ -16,8 +16,8 @@ const sizeMap = {
 export function LoadingSpinner({ size = "md", className, label }: LoadingSpinnerProps) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <Loader2 className={cn("animate-spin text-blue-500", sizeMap[size])} />
-      {label && <span className="text-gray-500 text-sm">{label}</span>}
+      <Loader2 className={cn("animate-spin text-[var(--color-accent-primary)]", sizeMap[size])} />
+      {label && <span className="text-[var(--color-text-tertiary)] text-sm">{label}</span>}
     </div>
   );
 }
@@ -28,13 +28,13 @@ interface PageLoaderProps {
 
 export function PageLoader({ message = "Loading..." }: PageLoaderProps) {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-[var(--color-bg-secondary)] flex flex-col items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="relative">
-          <div className="w-12 h-12 rounded-full border-4 border-gray-200" />
-          <div className="absolute inset-0 w-12 h-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+          <div className="w-12 h-12 rounded-full border-4 border-[var(--color-border-primary)]" />
+          <div className="absolute inset-0 w-12 h-12 rounded-full border-4 border-[var(--color-accent-primary)] border-t-transparent animate-spin" />
         </div>
-        <p className="text-gray-500 text-sm font-medium">{message}</p>
+        <p className="text-[var(--color-text-tertiary)] text-sm font-medium">{message}</p>
       </div>
     </div>
   );
@@ -50,10 +50,10 @@ export function ContentLoader({ message = "Loading...", className }: ContentLoad
     <div className={cn("flex flex-col items-center justify-center py-12", className)}>
       <div className="flex flex-col items-center gap-3">
         <div className="relative">
-          <div className="w-10 h-10 rounded-full border-3 border-gray-200" />
-          <div className="absolute inset-0 w-10 h-10 rounded-full border-3 border-blue-500 border-t-transparent animate-spin" />
+          <div className="w-10 h-10 rounded-full border-3 border-[var(--color-border-primary)]" />
+          <div className="absolute inset-0 w-10 h-10 rounded-full border-3 border-[var(--color-accent-primary)] border-t-transparent animate-spin" />
         </div>
-        <p className="text-gray-400 text-sm">{message}</p>
+        <p className="text-[var(--color-text-muted)] text-sm">{message}</p>
       </div>
     </div>
   );
@@ -65,13 +65,13 @@ interface CardLoaderProps {
 
 export function CardLoader({ lines = 3 }: CardLoaderProps) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 animate-pulse">
-      <div className="h-5 bg-gray-200 rounded w-1/3 mb-4" />
+    <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6 animate-pulse">
+      <div className="h-5 bg-[var(--color-bg-tertiary)] rounded w-1/3 mb-4" />
       <div className="space-y-3">
         {Array.from({ length: lines }).map((_, i) => (
           <div
             key={i}
-            className="h-4 bg-gray-100 rounded"
+            className="h-4 bg-[var(--color-bg-hover)] rounded"
             style={{ width: `${85 - i * 15}%` }}
           />
         ))}

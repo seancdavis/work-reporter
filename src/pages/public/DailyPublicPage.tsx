@@ -1,13 +1,24 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { dailyStandups, type DailyStandup } from "../../lib/api";
 import { MarkdownContent } from "../../components/MarkdownContent";
 import { CardLoader } from "../../components/LoadingSpinner";
-import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, timeAgo, cn } from "../../lib/utils";
+import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, groupDatesByWeek, timeAgo, cn } from "../../lib/utils";
 
 export function DailyPublicPage() {
+  const { date: dateParam } = useParams<{ date?: string }>();
+  const navigate = useNavigate();
   const [standups, setStandups] = useState<DailyStandup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(formatDate(getWeekdayDate()));
+
+  const selectedDate = dateParam || formatDate(getWeekdayDate());
+
+  // Redirect to URL with date if none provided
+  useEffect(() => {
+    if (!dateParam) {
+      navigate(`/daily/${selectedDate}`, { replace: true });
+    }
+  }, [dateParam, selectedDate, navigate]);
 
   // Fetch recent standups
   useEffect(() => {
@@ -50,10 +61,10 @@ export function DailyPublicPage() {
   // Section component for consistent styling
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
         {title}
       </h3>
-      <div className="pl-4 border-l-2 border-gray-200">
+      <div className="pl-4 border-l-2 border-[var(--color-border-primary)]">
         {children}
       </div>
     </div>
@@ -62,8 +73,8 @@ export function DailyPublicPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Daily Standup</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Daily Standup</h1>
+        <p className="text-[var(--color-text-secondary)] mt-1">
           What Sean worked on and what's planned for today.
         </p>
       </div>
@@ -71,46 +82,44 @@ export function DailyPublicPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Date selector sidebar */}
         <div className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-gray-700 mb-3">Select Date</h2>
-          <div className="space-y-1">
-            {loading ? (
-              // Skeleton for date list while loading
-              Array.from({ length: 7 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-full px-3 py-2 rounded-md animate-pulse"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="h-4 bg-gray-200 rounded w-24" />
-                    <div className="w-2 h-2 bg-gray-200 rounded-full" />
-                  </div>
+          <div className="space-y-4">
+            {groupDatesByWeek(recentDates).map((group, groupIndex, groups) => (
+              <div key={group.weekKey}>
+                <div className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider px-3 mb-1">
+                  {group.weekLabel}
                 </div>
-              ))
-            ) : (
-              recentDates.map((date) => {
-                const hasStandup = standups.some((s) => s.date === date);
-                return (
-                  <button
-                    key={date}
-                    onClick={() => setSelectedDate(date)}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
-                      selectedDate === date
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : "text-gray-700 hover:bg-gray-50",
-                      hasStandup && selectedDate !== date && "text-gray-900"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{formatDateShort(date)}</span>
-                      {hasStandup && (
-                        <span className="w-2 h-2 bg-green-500 rounded-full" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            )}
+                <div className="space-y-1">
+                  {group.dates.map((date) => {
+                    const hasStandup = standups.some((s) => s.date === date);
+                    return (
+                      <button
+                        key={date}
+                        onClick={() => navigate(`/daily/${date}`)}
+                        className={cn(
+                          "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
+                          selectedDate === date
+                            ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                          !loading && hasStandup && selectedDate !== date && "text-[var(--color-text-primary)]"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{formatDateShort(date)}</span>
+                          {loading ? (
+                            <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                          ) : hasStandup ? (
+                            <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {groupIndex < groups.length - 1 && (
+                  <div className="border-b border-[var(--color-border-primary)] mt-3" />
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -119,20 +128,20 @@ export function DailyPublicPage() {
           {loading ? (
             <CardLoader lines={4} />
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
               <div className="flex items-baseline justify-between mb-6">
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
                   {formatDateDisplay(selectedDate)}
                 </h2>
                 {currentStandup && (
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-[var(--color-text-muted)]">
                     Updated {timeAgo(currentStandup.updated_at)}
                   </span>
                 )}
               </div>
 
               {!currentStandup ? (
-                <p className="text-gray-500 text-sm py-4">
+                <p className="text-[var(--color-text-tertiary)] text-sm py-4">
                   No standup recorded for this date.
                 </p>
               ) : (
@@ -165,10 +174,10 @@ export function DailyPublicPage() {
                         {visibleLinkedIssues.map((issue) => (
                           <div
                             key={issue.id}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm bg-blue-50 text-blue-700 border border-blue-100"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] border border-[var(--color-border-primary)]"
                           >
                             <span className="font-medium">{issue.identifier}</span>
-                            <span className="text-blue-600">{issue.title}</span>
+                            <span className="text-[var(--color-accent-primary)]">{issue.title}</span>
                           </div>
                         ))}
                       </div>

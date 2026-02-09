@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Lock, Eye, Edit3, Copy, X } from "lucide-react";
 import { dailyStandups, type DailyStandup } from "../../lib/api";
 import { Button } from "../../components/Button";
@@ -8,24 +9,32 @@ import { MarkdownContent } from "../../components/MarkdownContent";
 import { AICleanupButton } from "../../components/AICleanupButton";
 import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
-import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, timeAgo, cn } from "../../lib/utils";
+import { useDraftStorage } from "../../hooks/useDraftStorage";
+import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, groupDatesByWeek, timeAgo, cn } from "../../lib/utils";
 
 type PreviewField = "yesterday_summary" | "today_plan" | "blockers";
 
 export function DailyAdminPage() {
+  const { date: dateParam } = useParams<{ date?: string }>();
+  const navigate = useNavigate();
   const [standups, setStandups] = useState<DailyStandup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(formatDate(getWeekdayDate()));
   const [saving, setSaving] = useState(false);
+
+  const selectedDate = dateParam || formatDate(getWeekdayDate());
+
+  // Redirect to URL with date if none provided
+  useEffect(() => {
+    if (!dateParam) {
+      navigate(`/admin/daily/${selectedDate}`, { replace: true });
+    }
+  }, [dateParam, selectedDate, navigate]);
   const { toasts, showToast, dismissToast } = useToast();
 
   // Preview mode for each field (only available for saved content)
   const [previewFields, setPreviewFields] = useState<Set<PreviewField>>(new Set());
 
   // Form state
-  const [yesterdaySummary, setYesterdaySummary] = useState("");
-  const [todayPlan, setTodayPlan] = useState("");
-  const [blockers, setBlockers] = useState("");
   const [linkedIssues, setLinkedIssues] = useState<
     Array<{ id: string; identifier: string; title: string }>
   >([]);
@@ -46,21 +55,26 @@ export function DailyAdminPage() {
     fetch();
   }, []);
 
-  // Load selected date's standup
+  const currentStandup = standups.find((s) => s.date === selectedDate);
+
+  // Draft storage for text fields
+  const yesterdayDraft = useDraftStorage({
+    key: `draft:daily:${selectedDate}:yesterday_summary`,
+    savedValue: currentStandup?.yesterday_summary || "",
+  });
+  const todayDraft = useDraftStorage({
+    key: `draft:daily:${selectedDate}:today_plan`,
+    savedValue: currentStandup?.today_plan || "",
+  });
+  const blockersDraft = useDraftStorage({
+    key: `draft:daily:${selectedDate}:blockers`,
+    savedValue: currentStandup?.blockers || "",
+  });
+
+  // Load linked issues and reset preview when date changes
   useEffect(() => {
     const standup = standups.find((s) => s.date === selectedDate);
-    if (standup) {
-      setYesterdaySummary(standup.yesterday_summary || "");
-      setTodayPlan(standup.today_plan || "");
-      setBlockers(standup.blockers || "");
-      setLinkedIssues(standup.linked_issues || []);
-    } else {
-      setYesterdaySummary("");
-      setTodayPlan("");
-      setBlockers("");
-      setLinkedIssues([]);
-    }
-    // Reset preview mode when changing dates
+    setLinkedIssues(standup?.linked_issues || []);
     setPreviewFields(new Set());
   }, [selectedDate, standups]);
 
@@ -69,9 +83,9 @@ export function DailyAdminPage() {
     try {
       const saved = await dailyStandups.save({
         date: selectedDate,
-        yesterday_summary: yesterdaySummary || undefined,
-        today_plan: todayPlan || undefined,
-        blockers: blockers || undefined,
+        yesterday_summary: yesterdayDraft.draftValue || undefined,
+        today_plan: todayDraft.draftValue || undefined,
+        blockers: blockersDraft.draftValue || undefined,
         linked_issues: linkedIssues,
       });
 
@@ -85,6 +99,11 @@ export function DailyAdminPage() {
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
       });
+
+      // Clear drafts after successful save
+      yesterdayDraft.clearDraft();
+      todayDraft.clearDraft();
+      blockersDraft.clearDraft();
 
       showToast("success", "Standup saved successfully");
     } catch (error) {
@@ -155,14 +174,13 @@ export function DailyAdminPage() {
     return dates;
   })();
 
-  const currentStandup = standups.find((s) => s.date === selectedDate);
   const yesterdayStandup = getYesterdayStandup();
   const hasYesterdayIssues = (yesterdayStandup?.linked_issues?.length ?? 0) > 0;
   const hasYesterdayPlan = !!yesterdayStandup?.today_plan;
 
   const copyPlanFromYesterday = () => {
     if (yesterdayStandup?.today_plan) {
-      setYesterdaySummary(yesterdayStandup.today_plan);
+      yesterdayDraft.setDraftValue(yesterdayStandup.today_plan);
     }
   };
 
@@ -216,7 +234,7 @@ export function DailyAdminPage() {
     return (
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
             {label}
           </label>
           <div className="flex items-center gap-2">
@@ -227,8 +245,8 @@ export function DailyAdminPage() {
                 className={cn(
                   "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors",
                   isPreview
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)]"
+                    : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)]"
                 )}
               >
                 {isPreview ? (
@@ -248,7 +266,7 @@ export function DailyAdminPage() {
               <button
                 type="button"
                 onClick={copyPlanFromYesterday}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)] transition-colors"
               >
                 <Copy className="w-3 h-3" />
                 Copy yesterday's plan
@@ -265,10 +283,10 @@ export function DailyAdminPage() {
         </div>
         {isPreview ? (
           <div className="space-y-3">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">
               {getPreviewLabel(field)}
             </h3>
-            <div className="pl-4 border-l-2 border-gray-200">
+            <div className="pl-4 border-l-2 border-[var(--color-border-primary)]">
               <MarkdownContent html={getSavedHtml(field)} />
             </div>
           </div>
@@ -288,8 +306,8 @@ export function DailyAdminPage() {
     <>
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Daily Standup</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Daily Standup</h1>
+          <p className="text-[var(--color-text-secondary)] mt-1">
             Record what you worked on yesterday and what you're planning for today.
           </p>
         </div>
@@ -297,45 +315,44 @@ export function DailyAdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Date selector sidebar */}
           <div className="lg:col-span-1">
-            <h2 className="text-sm font-medium text-gray-700 mb-3">Select Date</h2>
-            <div className="space-y-1">
-              {loading ? (
-                Array.from({ length: 7 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-full px-3 py-2 rounded-md animate-pulse"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="h-4 bg-gray-200 rounded w-24" />
-                      <div className="w-2 h-2 bg-gray-200 rounded-full" />
-                    </div>
+            <div className="space-y-4">
+              {groupDatesByWeek(recentDates).map((group, groupIndex, groups) => (
+                <div key={group.weekKey}>
+                  <div className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider px-3 mb-1">
+                    {group.weekLabel}
                   </div>
-                ))
-              ) : (
-                recentDates.map((date) => {
-                  const hasStandup = standups.some((s) => s.date === date);
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => setSelectedDate(date)}
-                      className={cn(
-                        "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
-                        selectedDate === date
-                          ? "bg-blue-50 text-blue-700 font-medium"
-                          : "text-gray-700 hover:bg-gray-50",
-                        hasStandup && selectedDate !== date && "text-gray-900"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{formatDateShort(date)}</span>
-                        {hasStandup && (
-                          <span className="w-2 h-2 bg-green-500 rounded-full" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })
-              )}
+                  <div className="space-y-1">
+                    {group.dates.map((date) => {
+                      const hasStandup = standups.some((s) => s.date === date);
+                      return (
+                        <button
+                          key={date}
+                          onClick={() => navigate(`/admin/daily/${date}`)}
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-sm rounded-md transition-colors",
+                            selectedDate === date
+                              ? "bg-[var(--color-accent-secondary)] text-[var(--color-accent-text)] font-medium"
+                              : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]",
+                            !loading && hasStandup && selectedDate !== date && "text-[var(--color-text-primary)]"
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{formatDateShort(date)}</span>
+                            {loading ? (
+                              <span className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full flex-shrink-0 animate-pulse" />
+                            ) : hasStandup ? (
+                              <span className="w-2 h-2 bg-[var(--color-success)] rounded-full flex-shrink-0" />
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {groupIndex < groups.length - 1 && (
+                    <div className="border-b border-[var(--color-border-primary)] mt-3" />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -344,12 +361,12 @@ export function DailyAdminPage() {
             {loading ? (
               <CardLoader lines={4} />
             ) : (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-1">
+              <div className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6">
+                <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-1">
                   {formatDateDisplay(selectedDate)}
                 </h2>
                 {currentStandup && (
-                  <p className="text-sm text-gray-500 mb-6">
+                  <p className="text-sm text-[var(--color-text-tertiary)] mb-6">
                     Last updated: {timeAgo(currentStandup.updated_at)}
                   </p>
                 )}
@@ -359,8 +376,8 @@ export function DailyAdminPage() {
                   {renderFieldWithPreview(
                     "yesterday_summary",
                     "What did you accomplish yesterday?",
-                    yesterdaySummary,
-                    setYesterdaySummary,
+                    yesterdayDraft.draftValue,
+                    yesterdayDraft.setDraftValue,
                     "Describe what you completed...",
                     3
                   )}
@@ -369,8 +386,8 @@ export function DailyAdminPage() {
                   {renderFieldWithPreview(
                     "today_plan",
                     "What are you planning for today?",
-                    todayPlan,
-                    setTodayPlan,
+                    todayDraft.draftValue,
+                    todayDraft.setDraftValue,
                     "List your goals for today...",
                     3
                   )}
@@ -379,8 +396,8 @@ export function DailyAdminPage() {
                   {renderFieldWithPreview(
                     "blockers",
                     "Any blockers?",
-                    blockers,
-                    setBlockers,
+                    blockersDraft.draftValue,
+                    blockersDraft.setDraftValue,
                     "Describe any blockers or issues...",
                     2
                   )}
@@ -388,14 +405,14 @@ export function DailyAdminPage() {
                   {/* Linked Issues */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
                         Linked Issues
                       </label>
                       {hasYesterdayIssues && (
                         <button
                           type="button"
                           onClick={copyIssuesFromYesterday}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)] transition-colors"
                         >
                           <Copy className="w-3 h-3" />
                           Copy from yesterday
@@ -419,27 +436,27 @@ export function DailyAdminPage() {
                             className={cn(
                               "flex items-center justify-between gap-2 px-3 py-2 rounded-md border",
                               issue.identifier.startsWith("SCD-")
-                                ? "bg-gray-50 border-gray-200"
-                                : "bg-blue-50 border-blue-100"
+                                ? "bg-[var(--color-bg-hover)] border-[var(--color-border-primary)]"
+                                : "bg-[var(--color-accent-secondary)] border-[var(--color-border-primary)]"
                             )}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <span className={cn(
                                 "font-medium text-sm whitespace-nowrap",
                                 issue.identifier.startsWith("SCD-")
-                                  ? "text-gray-700"
-                                  : "text-blue-700"
+                                  ? "text-[var(--color-text-secondary)]"
+                                  : "text-[var(--color-accent-text)]"
                               )}>
                                 {issue.identifier}
                               </span>
                               {issue.identifier.startsWith("SCD-") && (
-                                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                <Lock className="w-3 h-3 text-[var(--color-text-muted)] flex-shrink-0" />
                               )}
                               <span className={cn(
                                 "text-sm truncate",
                                 issue.identifier.startsWith("SCD-")
-                                  ? "text-gray-600"
-                                  : "text-blue-600"
+                                  ? "text-[var(--color-text-tertiary)]"
+                                  : "text-[var(--color-accent-primary)]"
                               )}>
                                 {issue.title}
                               </span>
@@ -447,7 +464,7 @@ export function DailyAdminPage() {
                             <button
                               type="button"
                               onClick={() => removeIssue(issue.id)}
-                              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                              className="flex-shrink-0 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors"
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -457,7 +474,12 @@ export function DailyAdminPage() {
                     )}
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-end gap-3">
+                    {(yesterdayDraft.hasDraft || todayDraft.hasDraft || blockersDraft.hasDraft) && (
+                      <span className="text-xs text-[var(--color-warning-text)] bg-[var(--color-warning-bg)] px-2 py-1 rounded-[var(--radius-sm)]">
+                        Unsaved draft
+                      </span>
+                    )}
                     <Button onClick={handleSave} loading={saving}>
                       Save Standup
                     </Button>

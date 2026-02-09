@@ -9,6 +9,8 @@
     "generate-redirects": "node scripts/generate-redirects.js",
     "lint": "eslint .",
     "preview": "vite preview",
+    "sync:dry-run": "netlify dev:exec node scripts/sync-to-linear.js --dry-run",
+    "sync:run": "netlify dev:exec node scripts/sync-to-linear.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "netlify dev:exec drizzle-kit migrate",
     "db:push": "netlify dev:exec drizzle-kit push",

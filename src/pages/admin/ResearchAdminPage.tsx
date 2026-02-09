@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { research, linear, type ResearchItem, type ResearchColumn, type LinearIssue } from "../../lib/api";
 import { KanbanBoard } from "../../components/KanbanBoard";
 import { ResearchModal } from "../../components/ResearchModal";
+import { ClosedArchiveModal } from "../../components/ClosedArchiveModal";
 import { Button } from "../../components/Button";
 import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
@@ -21,6 +22,7 @@ export function ResearchAdminPage() {
   const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ResearchItem | null>(null);
+  const [showClosedArchive, setShowClosedArchive] = useState(false);
 
   // Fetch research items
   useEffect(() => {
@@ -155,12 +157,24 @@ export function ResearchAdminPage() {
     }
   };
 
+  const handleReopenItem = async (item: ResearchItem, targetColumn: ResearchColumn) => {
+    try {
+      const updated = await research.update(item.id, { column: targetColumn });
+      setItems(items.map((i) => (i.id === item.id ? updated : i)));
+      showToast("success", `"${item.linear_issue_identifier}" reopened to Ideas.`);
+    } catch (error) {
+      console.error("Failed to reopen item:", error);
+      const message = error instanceof Error ? error.message : "Failed to reopen item";
+      showToast("error", message);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Research Board</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Research Board</h1>
+          <p className="text-[var(--color-text-secondary)] mt-1">
             Track what you're actively researching and thinking about.
           </p>
         </div>
@@ -180,6 +194,7 @@ export function ResearchAdminPage() {
           onItemUpdate={handleItemUpdate}
           onItemClick={handleItemClick}
           onItemDelete={handleItemDelete}
+          onViewClosedArchive={() => setShowClosedArchive(true)}
           isAdmin={true}
         />
       )}
@@ -187,10 +202,10 @@ export function ResearchAdminPage() {
       {/* Add Issue Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-            <div className="p-4 border-b border-gray-200">
+          <div className="bg-[var(--color-bg-elevated)] rounded-lg shadow-[var(--shadow-lg)] w-full max-w-lg mx-4">
+            <div className="p-4 border-b border-[var(--color-border-primary)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
                   Add Issue to Research Board
                 </h2>
                 <button
@@ -199,7 +214,7 @@ export function ResearchAdminPage() {
                     setSearchQuery("");
                     setSearchResults([]);
                   }}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -214,13 +229,13 @@ export function ResearchAdminPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search Linear issues by ID or title..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-[var(--color-border-secondary)] rounded-md text-sm bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)]"
                 autoFocus
               />
 
               <div className="mt-4 max-h-80 overflow-auto">
                 {searching ? (
-                  <div className="text-sm text-gray-500 py-4 text-center">
+                  <div className="text-sm text-[var(--color-text-tertiary)] py-4 text-center">
                     Searching...
                   </div>
                 ) : searchResults.length > 0 ? (
@@ -231,38 +246,38 @@ export function ResearchAdminPage() {
                         onClick={() => handleAddIssue(issue)}
                         disabled={adding}
                         className={cn(
-                          "w-full p-3 text-left rounded-md border border-gray-200 hover:bg-gray-50 transition-colors",
+                          "w-full p-3 text-left rounded-md border border-[var(--color-border-primary)] hover:bg-[var(--color-bg-hover)] transition-colors",
                           adding && "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-blue-600">
+                          <span className="font-medium text-[var(--color-accent-primary)]">
                             {issue.identifier}
                           </span>
                           <span className={cn(
                             "text-xs px-2 py-0.5 rounded",
                             issue.state.type === "started"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-600"
+                              ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]"
+                              : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]"
                           )}>
                             {issue.state.name}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-700 mt-1 line-clamp-2">
+                        <p className="text-sm text-[var(--color-text-secondary)] mt-1 line-clamp-2">
                           {issue.title}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
                           {issue.team.name}
                         </p>
                       </button>
                     ))}
                   </div>
                 ) : searchQuery.trim() ? (
-                  <div className="text-sm text-gray-500 py-4 text-center">
+                  <div className="text-sm text-[var(--color-text-tertiary)] py-4 text-center">
                     No issues found
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-500 py-4 text-center">
+                  <div className="text-sm text-[var(--color-text-tertiary)] py-4 text-center">
                     Start typing to search for issues
                   </div>
                 )}
@@ -279,6 +294,20 @@ export function ResearchAdminPage() {
           isAdmin={true}
           onClose={handleCloseModal}
           onUpdate={handleModalUpdate}
+        />
+      )}
+
+      {/* Closed Archive Modal */}
+      {showClosedArchive && (
+        <ClosedArchiveModal
+          items={items}
+          isAdmin={true}
+          onClose={() => setShowClosedArchive(false)}
+          onItemClick={(item) => {
+            setShowClosedArchive(false);
+            navigate(`/admin/research/${item.id}`);
+          }}
+          onReopen={handleReopenItem}
         />
       )}
 
