@@ -1,8 +1,26 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import { requireAdmin } from "./_shared/auth";
 import { uploadScreenshot, deleteScreenshot } from "./_shared/blobs";
+import { parseMarkdown } from "./_shared/markdown";
+
+function toApiResponse(k: typeof schema.kudos.$inferSelect) {
+  return {
+    id: k.id,
+    received_date: k.receivedDate,
+    sender_name: k.senderName,
+    message: k.message,
+    message_html: k.messageHtml,
+    context: k.context,
+    context_html: k.contextHtml,
+    screenshot_blob_key: k.screenshotBlobKey,
+    show_screenshot: k.showScreenshot,
+    tags: k.tags,
+    created_at: k.createdAt,
+    updated_at: k.updatedAt,
+  };
+}
 
 export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
@@ -16,21 +34,10 @@ export default async (request: Request, context: Context) => {
       const kudosList = await db
         .select()
         .from(schema.kudos)
-        .orderBy(desc(schema.kudos.receivedDate))
+        .orderBy(desc(schema.kudos.receivedDate), asc(schema.kudos.createdAt))
         .limit(limit);
 
-      // Convert to snake_case for API compatibility
-      const result = kudosList.map((k) => ({
-        id: k.id,
-        received_date: k.receivedDate,
-        sender_name: k.senderName,
-        message: k.message,
-        context: k.context,
-        screenshot_blob_key: k.screenshotBlobKey,
-        tags: k.tags,
-        created_at: k.createdAt,
-        updated_at: k.updatedAt,
-      }));
+      const result = kudosList.map(toApiResponse);
 
       return Response.json(result);
     } catch (error) {
@@ -39,7 +46,7 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // POST /api/kudos - Create a new kudo (requires admin auth)
+  // POST /api/kudos - Create new kudos (requires admin auth)
   if (request.method === "POST") {
     const auth = await requireAdmin(request);
     if (!auth.authorized) {
@@ -55,6 +62,7 @@ export default async (request: Request, context: Context) => {
         message: string;
         context?: string;
         tags?: string[];
+        show_screenshot?: number;
       };
       let screenshotKey: string | null = null;
 
@@ -69,6 +77,7 @@ export default async (request: Request, context: Context) => {
           tags: formData.get("tags")
             ? JSON.parse(formData.get("tags") as string)
             : [],
+          show_screenshot: formData.get("show_screenshot") === "1" ? 1 : 0,
         };
 
         const screenshot = formData.get("screenshot") as File | null;
@@ -84,7 +93,7 @@ export default async (request: Request, context: Context) => {
         kudoData = await request.json();
       }
 
-      const { received_date, sender_name, message, context, tags = [] } = kudoData;
+      const { received_date, sender_name, message, context, tags = [], show_screenshot = 0 } = kudoData;
 
       if (!received_date || !sender_name || !message) {
         return Response.json(
@@ -99,32 +108,23 @@ export default async (request: Request, context: Context) => {
           receivedDate: received_date,
           senderName: sender_name,
           message,
+          messageHtml: parseMarkdown(message),
           context: context || null,
+          contextHtml: parseMarkdown(context || null),
           screenshotBlobKey: screenshotKey,
+          showScreenshot: show_screenshot,
           tags: tags,
         })
         .returning();
 
-      const result = inserted[0];
-
-      return Response.json({
-        id: result.id,
-        received_date: result.receivedDate,
-        sender_name: result.senderName,
-        message: result.message,
-        context: result.context,
-        screenshot_blob_key: result.screenshotBlobKey,
-        tags: result.tags,
-        created_at: result.createdAt,
-        updated_at: result.updatedAt,
-      }, { status: 201 });
+      return Response.json(toApiResponse(inserted[0]), { status: 201 });
     } catch (error) {
-      console.error("Error creating kudo:", error);
-      return Response.json({ error: "Failed to create kudo" }, { status: 500 });
+      console.error("Error creating kudos:", error);
+      return Response.json({ error: "Failed to create kudos" }, { status: 500 });
     }
   }
 
-  // PUT /api/kudos/:id - Update a kudo (requires admin auth)
+  // PUT /api/kudos?id=123 - Update kudos (requires admin auth)
   if (request.method === "PUT") {
     const auth = await requireAdmin(request);
     if (!auth.authorized) {
@@ -137,21 +137,69 @@ export default async (request: Request, context: Context) => {
         return Response.json({ error: "ID parameter required" }, { status: 400 });
       }
 
-      const body = await request.json();
-      const { received_date, sender_name, message, context, tags } = body as {
+      const contentType = request.headers.get("content-type") || "";
+
+      let body: {
         received_date?: string;
         sender_name?: string;
         message?: string;
         context?: string;
         tags?: string[];
+        show_screenshot?: number;
       };
+      let newScreenshotKey: string | null | undefined = undefined;
+
+      if (contentType.includes("multipart/form-data")) {
+        const formData = await request.formData();
+
+        body = {};
+        const rd = formData.get("received_date") as string;
+        if (rd) body.received_date = rd;
+        const sn = formData.get("sender_name") as string;
+        if (sn) body.sender_name = sn;
+        const msg = formData.get("message") as string;
+        if (msg) body.message = msg;
+        const ctx = formData.get("context") as string;
+        if (ctx !== null) body.context = ctx || undefined;
+        const tagsStr = formData.get("tags") as string;
+        if (tagsStr) body.tags = JSON.parse(tagsStr);
+        const showSS = formData.get("show_screenshot");
+        if (showSS !== null) body.show_screenshot = showSS === "1" ? 1 : 0;
+
+        const screenshot = formData.get("screenshot") as File | null;
+        if (screenshot) {
+          // Delete old screenshot first
+          const existing = await db
+            .select()
+            .from(schema.kudos)
+            .where(eq(schema.kudos.id, parseInt(idParam)))
+            .limit(1);
+          if (existing.length > 0 && existing[0].screenshotBlobKey) {
+            await deleteScreenshot(existing[0].screenshotBlobKey);
+          }
+          const buffer = await screenshot.arrayBuffer();
+          newScreenshotKey = await uploadScreenshot(buffer, screenshot.name, screenshot.type);
+        }
+      } else {
+        body = await request.json();
+      }
+
+      const { received_date, sender_name, message, context, tags, show_screenshot } = body;
 
       const updateData: Record<string, unknown> = { updatedAt: new Date() };
       if (received_date) updateData.receivedDate = received_date;
       if (sender_name) updateData.senderName = sender_name;
-      if (message) updateData.message = message;
-      if (context !== undefined) updateData.context = context || null;
+      if (message !== undefined) {
+        updateData.message = message;
+        updateData.messageHtml = parseMarkdown(message);
+      }
+      if (context !== undefined) {
+        updateData.context = context || null;
+        updateData.contextHtml = parseMarkdown(context || null);
+      }
       if (tags) updateData.tags = tags;
+      if (show_screenshot !== undefined) updateData.showScreenshot = show_screenshot;
+      if (newScreenshotKey !== undefined) updateData.screenshotBlobKey = newScreenshotKey;
 
       const updated = await db
         .update(schema.kudos)
@@ -160,25 +208,13 @@ export default async (request: Request, context: Context) => {
         .returning();
 
       if (updated.length === 0) {
-        return Response.json({ error: "Kudo not found" }, { status: 404 });
+        return Response.json({ error: "Kudos not found" }, { status: 404 });
       }
 
-      const result = updated[0];
-
-      return Response.json({
-        id: result.id,
-        received_date: result.receivedDate,
-        sender_name: result.senderName,
-        message: result.message,
-        context: result.context,
-        screenshot_blob_key: result.screenshotBlobKey,
-        tags: result.tags,
-        created_at: result.createdAt,
-        updated_at: result.updatedAt,
-      });
+      return Response.json(toApiResponse(updated[0]));
     } catch (error) {
-      console.error("Error updating kudo:", error);
-      return Response.json({ error: "Failed to update kudo" }, { status: 500 });
+      console.error("Error updating kudos:", error);
+      return Response.json({ error: "Failed to update kudos" }, { status: 500 });
     }
   }
 
@@ -195,7 +231,7 @@ export default async (request: Request, context: Context) => {
         return Response.json({ error: "ID parameter required" }, { status: 400 });
       }
 
-      // Get the kudo to check for screenshot
+      // Get the kudos to check for screenshot
       const existing = await db
         .select()
         .from(schema.kudos)
@@ -212,8 +248,8 @@ export default async (request: Request, context: Context) => {
 
       return Response.json({ success: true });
     } catch (error) {
-      console.error("Error deleting kudo:", error);
-      return Response.json({ error: "Failed to delete kudo" }, { status: 500 });
+      console.error("Error deleting kudos:", error);
+      return Response.json({ error: "Failed to delete kudos" }, { status: 500 });
     }
   }
 
