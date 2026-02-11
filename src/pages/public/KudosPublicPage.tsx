@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { kudos as kudosApi, type Kudo } from "../../lib/api";
 import { MarkdownContent } from "../../components/MarkdownContent";
-import { formatDateDisplay } from "../../lib/utils";
+import { formatDateCompact, formatMonthYear, getMonthKey } from "../../lib/utils";
 
 export function KudosPublicPage() {
   const [kudosList, setKudosList] = useState<Kudo[]>([]);
@@ -23,29 +23,27 @@ export function KudosPublicPage() {
     fetch();
   }, []);
 
-  // Group kudos by year — within each year, chronological (oldest first)
-  const kudosByYear = kudosList.reduce(
+  // Group kudos by month — within each month, chronological (oldest first)
+  const kudosByMonth = kudosList.reduce(
     (acc, kudo) => {
-      const year = new Date(kudo.received_date + "T00:00:00").getFullYear();
-      if (!acc[year]) acc[year] = [];
-      acc[year].push(kudo);
+      const key = getMonthKey(kudo.received_date);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(kudo);
       return acc;
     },
-    {} as Record<number, Kudo[]>
+    {} as Record<string, Kudo[]>
   );
 
-  // Sort within each year: chronological order (oldest first)
-  for (const year of Object.keys(kudosByYear)) {
-    kudosByYear[Number(year)].sort((a, b) => {
+  // Sort within each month: chronological order (oldest first)
+  for (const month of Object.keys(kudosByMonth)) {
+    kudosByMonth[month].sort((a, b) => {
       const dateCompare = a.received_date.localeCompare(b.received_date);
       if (dateCompare !== 0) return dateCompare;
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
   }
 
-  const years = Object.keys(kudosByYear)
-    .map(Number)
-    .sort((a, b) => b - a);
+  const months = Object.keys(kudosByMonth).sort((a, b) => b.localeCompare(a));
 
   return (
     <div className="space-y-8">
@@ -65,11 +63,11 @@ export function KudosPublicPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {years.map((year) => (
-            <div key={year}>
-              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">{year}</h2>
+          {months.map((month) => (
+            <div key={month}>
+              <h2 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">{formatMonthYear(kudosByMonth[month][0].received_date)}</h2>
               <div className="space-y-4">
-                {kudosByYear[year].map((kudo) => (
+                {kudosByMonth[month].map((kudo) => (
                   <div
                     key={kudo.id}
                     className="bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] p-6"
@@ -92,7 +90,7 @@ export function KudosPublicPage() {
                             {kudo.sender_name}
                           </span>
                           <span>&middot;</span>
-                          <span>{formatDateDisplay(kudo.received_date)}</span>
+                          <span>{formatDateCompact(kudo.received_date)}</span>
                         </div>
 
                         {/* Context rendered as markdown, no label */}
