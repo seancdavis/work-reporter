@@ -79,8 +79,11 @@ export interface Kudo {
   received_date: string;
   sender_name: string;
   message: string;
+  message_html: string | null;
   context: string | null;
+  context_html: string | null;
   screenshot_blob_key: string | null;
+  show_screenshot: number | null;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -255,6 +258,7 @@ export const kudos = {
     context?: string;
     tags?: string[];
     screenshot?: File;
+    show_screenshot?: number;
   }) => {
     if (data.screenshot) {
       const formData = new FormData();
@@ -263,6 +267,7 @@ export const kudos = {
       formData.append("message", data.message);
       if (data.context) formData.append("context", data.context);
       if (data.tags) formData.append("tags", JSON.stringify(data.tags));
+      formData.append("show_screenshot", data.show_screenshot ? "1" : "0");
       formData.append("screenshot", data.screenshot);
 
       // Build headers for file upload (no Content-Type, let browser set it)
@@ -297,11 +302,48 @@ export const kudos = {
     });
   },
 
-  update: (id: number, data: Partial<Omit<Kudo, "id" | "created_at" | "updated_at" | "screenshot_blob_key">>) =>
-    fetchApi<Kudo>(`/kudos?id=${id}`, {
+  update: async (id: number, data: Partial<Omit<Kudo, "id" | "created_at" | "updated_at" | "screenshot_blob_key" | "message_html" | "context_html">> & { screenshot?: File }) => {
+    if (data.screenshot) {
+      const formData = new FormData();
+      if (data.received_date) formData.append("received_date", data.received_date);
+      if (data.sender_name) formData.append("sender_name", data.sender_name);
+      if (data.message) formData.append("message", data.message);
+      if (data.context !== undefined) formData.append("context", data.context || "");
+      if (data.tags) formData.append("tags", JSON.stringify(data.tags));
+      if (data.show_screenshot !== undefined) formData.append("show_screenshot", data.show_screenshot ? "1" : "0");
+      formData.append("screenshot", data.screenshot);
+
+      const headers: Record<string, string> = {};
+      if (currentUser) {
+        headers["x-user-id"] = currentUser.id;
+        headers["x-user-email"] = currentUser.email;
+      }
+
+      onLoadingStart?.();
+      try {
+        const response = await fetch(`${API_BASE}/kudos?id=${id}`, {
+          method: "PUT",
+          body: formData,
+          headers,
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: "Unknown error" }));
+          throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return response.json() as Promise<Kudo>;
+      } finally {
+        onLoadingStop?.();
+      }
+    }
+
+    const { screenshot: _, ...jsonData } = data;
+    return fetchApi<Kudo>(`/kudos?id=${id}`, {
       method: "PUT",
-      body: JSON.stringify(data),
-    }),
+      body: JSON.stringify(jsonData),
+    });
+  },
 
   delete: (id: number) =>
     fetchApi<{ success: boolean }>(`/kudos?id=${id}`, {
