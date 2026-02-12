@@ -29,7 +29,7 @@ export function DailyAdminPage() {
       navigate(`/admin/daily/${selectedDate}`, { replace: true });
     }
   }, [dateParam, selectedDate, navigate]);
-  const { toasts, showToast, dismissToast } = useToast();
+  const { toasts, showToast, dismissToast, dismissing } = useToast();
 
   // Preview mode for each field (only available for saved content)
   const [previewFields, setPreviewFields] = useState<Set<PreviewField>>(new Set());
@@ -491,7 +491,7 @@ export function DailyAdminPage() {
         </div>
       </div>
 
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} dismissing={dismissing} />
     </>
   );
 }
