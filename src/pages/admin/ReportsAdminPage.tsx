@@ -30,7 +30,7 @@ export function ReportsAdminPage() {
     }
   }, [weekParam, selectedWeek, navigate]);
   const [generating, setGenerating] = useState(false);
-  const { toasts, showToast, dismissToast } = useToast();
+  const { toasts, showToast, dismissToast, dismissing } = useToast();
 
   // Preview mode
   const [isPreview, setIsPreview] = useState(false);
@@ -439,7 +439,7 @@ export function ReportsAdminPage() {
         </div>
       </div>
 
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} dismissing={dismissing} />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { TextArea } from "../../components/TextArea";
 import { MarkdownContent } from "../../components/MarkdownContent";
+import { CardLoader } from "../../components/LoadingSpinner";
 import { useToast, ToastContainer } from "../../components/Toast";
 import { formatDate, formatDateCompact, formatMonthYear, getMonthKey } from "../../lib/utils";
 
@@ -317,7 +318,16 @@ export function KudosAdminPage() {
 
       {/* Kudos List */}
       {loading ? (
-        <p className="text-[var(--color-text-tertiary)]">Loading...</p>
+        <div className="space-y-8">
+          <div>
+            <div className="h-6 bg-[var(--color-bg-tertiary)] rounded w-16 mb-4 animate-pulse" />
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <CardLoader key={i} lines={3} />
+              ))}
+            </div>
+          </div>
+        </div>
       ) : kudosList.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-[var(--color-text-tertiary)]">No kudos recorded yet.</p>
