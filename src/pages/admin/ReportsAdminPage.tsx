@@ -115,7 +115,7 @@ export function ReportsAdminPage() {
       showToast("success", "AI summary generated - review and save when ready");
     } catch (error) {
       console.error("Failed to generate report:", error);
-      showToast("error", "Failed to generate report. Make sure you have daily standups for this week.");
+      showToast("error", "Failed to generate report. Make sure you have daily standups for the selected week.");
     } finally {
       setGenerating(false);
     }
