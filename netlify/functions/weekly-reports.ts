@@ -84,7 +84,7 @@ export default async (request: Request, context: Context) => {
         .where(eq(schema.weeklyStandups.weekStart, week_start));
 
       if (dailyStandups.length === 0) {
-        return Response.json({ error: "No daily standups found for this week" }, { status: 400 });
+        return Response.json({ error: "No daily standups found for the selected week" }, { status: 400 });
       }
 
       // Generate AI summary
@@ -186,5 +186,5 @@ export default async (request: Request, context: Context) => {
 };
 
 export const config: Config = {
-  path: "/api/weekly-reports",
+  path: ["/api/weekly-reports", "/api/weekly-reports/*"],
 };
