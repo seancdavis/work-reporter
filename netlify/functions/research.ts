@@ -433,7 +433,18 @@ export default async (request: Request, context: Context) => {
         return Response.json({ error: `Invalid column. Must be one of: ${VALID_COLUMNS.join(", ")}` }, { status: 400 });
       }
 
-      const updateData: Record<string, unknown> = { updatedAt: new Date() };
+      const updateData: Record<string, unknown> = {};
+
+      // Track whether any meaningful content changed (not just sort order)
+      const hasMeaningfulChange = column !== undefined || title !== undefined || description !== undefined ||
+        planned_issue_id !== undefined || planned_issue_identifier !== undefined ||
+        planned_issue_title !== undefined || planned_issue_url !== undefined;
+
+      // Only update updated_at for meaningful content changes, not sort order changes
+      if (hasMeaningfulChange) {
+        updateData.updatedAt = new Date();
+      }
+
       if (column !== undefined) updateData.column = column;
       if (display_order !== undefined) updateData.displayOrder = display_order;
       if (title !== undefined) updateData.title = title;
@@ -556,13 +567,22 @@ export default async (request: Request, context: Context) => {
           return Response.json({ error: `Invalid column for item ${item.id}` }, { status: 400 });
         }
 
+        // Only update updated_at when column actually changed (meaningful change),
+        // not for sort order changes within the same column
+        const current = currentColumnMap.get(item.id);
+        const columnChanged = current && current.column !== item.column;
+
+        const updateFields: Record<string, unknown> = {
+          column: item.column,
+          displayOrder: item.display_order,
+        };
+        if (columnChanged) {
+          updateFields.updatedAt = new Date();
+        }
+
         await db
           .update(schema.researchItems)
-          .set({
-            column: item.column,
-            displayOrder: item.display_order,
-            updatedAt: new Date(),
-          })
+          .set(updateFields)
           .where(eq(schema.researchItems.id, item.id));
       }
 
