@@ -140,6 +140,7 @@ export function ResearchModal({
       onUpdate({
         ...item,
         notes: [...item.notes, newNote],
+        updated_at: new Date().toISOString(),
       });
       setNoteValue("");
       setAddingNote(false);
@@ -163,6 +164,7 @@ export function ResearchModal({
       onUpdate({
         ...item,
         notes: item.notes.map((n) => (n.id === editingNoteId ? updatedNote : n)),
+        updated_at: new Date().toISOString(),
       });
       setEditingNoteId(null);
       setEditingNoteValue("");
@@ -180,6 +182,7 @@ export function ResearchModal({
       onUpdate({
         ...item,
         notes: item.notes.filter((n) => n.id !== noteId),
+        updated_at: new Date().toISOString(),
       });
     } catch (error) {
       console.error("Failed to delete note:", error);
