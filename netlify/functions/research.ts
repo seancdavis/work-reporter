@@ -304,6 +304,12 @@ export default async (request: Request, context: Context) => {
 
       const note = inserted[0];
 
+      // Bump the parent research item's updated_at timestamp
+      await db
+        .update(schema.researchItems)
+        .set({ updatedAt: new Date() })
+        .where(eq(schema.researchItems.id, itemIdFromPath));
+
       // Sync note to Linear as a comment
       const item = items[0];
       console.log(`[Sync] New note on ${item.linearIssueIdentifier} -> creating Linear comment`);
