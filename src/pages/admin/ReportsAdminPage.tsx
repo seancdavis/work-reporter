@@ -287,7 +287,7 @@ export function ReportsAdminPage() {
                   ) : (
                     <TextArea
                       value={summaryDraft.draftValue}
-                      onChange={(e) => summaryDraft.setDraftValue(e.target.value)}
+                      onChange={summaryDraft.setDraftValue}
                       placeholder="Write or generate a summary of your week's accomplishments..."
                       rows={6}
                     />

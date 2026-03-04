@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Editor } from "@rocktree/ash";
 import { type ResearchItem, type LinearIssue, research, linear } from "../lib/api";
 import { cn, timeAgo } from "../lib/utils";
 import { MarkdownContent } from "./MarkdownContent";
@@ -429,11 +430,12 @@ export function ResearchModal({
 
               {editingDescription && isAdmin ? (
                 <div className="space-y-2">
-                  <textarea
+                  <Editor
                     ref={descriptionTextareaRef}
                     value={descriptionValue}
-                    onChange={(e) => setDescriptionValue(e.target.value)}
+                    onChange={setDescriptionValue}
                     rows={6}
+                    showHints={false}
                     className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)] resize-none"
                     placeholder="Add a description (supports markdown)..."
                   />
@@ -695,11 +697,12 @@ export function ResearchModal({
               {/* Add note form */}
               {addingNote && isAdmin && (
                 <div className="mb-4 space-y-2">
-                  <textarea
+                  <Editor
                     ref={noteTextareaRef}
                     value={noteValue}
-                    onChange={(e) => setNoteValue(e.target.value)}
+                    onChange={setNoteValue}
                     rows={3}
+                    showHints={false}
                     className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)] resize-none"
                     placeholder="Add a note (supports markdown)..."
                   />
@@ -731,10 +734,11 @@ export function ResearchModal({
                     >
                       {editingNoteId === note.id ? (
                         <div className="space-y-2">
-                          <textarea
+                          <Editor
                             value={editingNoteValue}
-                            onChange={(e) => setEditingNoteValue(e.target.value)}
+                            onChange={setEditingNoteValue}
                             rows={3}
+                            showHints={false}
                             className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-md text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-border-focus)] focus:border-[var(--color-border-focus)] resize-none"
                             autoFocus
                           />

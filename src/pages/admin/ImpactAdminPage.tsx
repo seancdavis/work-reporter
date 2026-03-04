@@ -145,7 +145,7 @@ export function ImpactAdminPage() {
             <TextArea
               label="Description (optional)"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={setDescription}
               placeholder="Describe the impact of this work (supports markdown)..."
               rows={3}
             />

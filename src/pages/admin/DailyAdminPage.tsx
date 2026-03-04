@@ -293,7 +293,7 @@ export function DailyAdminPage() {
         ) : (
           <TextArea
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={setValue}
             placeholder={placeholder}
             rows={rows}
           />

@@ -197,7 +197,7 @@ export function KudosAdminPage() {
             <TextArea
               label="Message (supports Markdown)"
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={setMessage}
               placeholder="What did they say?"
               rows={3}
               required
@@ -206,7 +206,7 @@ export function KudosAdminPage() {
             <TextArea
               label="Context (optional, supports Markdown)"
               value={context}
-              onChange={(e) => setContext(e.target.value)}
+              onChange={setContext}
               placeholder="Additional context about this feedback..."
               rows={2}
             />
