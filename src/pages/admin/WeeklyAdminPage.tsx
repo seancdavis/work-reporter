@@ -272,7 +272,7 @@ export function WeeklyAdminPage() {
                   ) : (
                     <TextArea
                       value={accomplishmentsDraft.draftValue}
-                      onChange={(e) => accomplishmentsDraft.setDraftValue(e.target.value)}
+                      onChange={accomplishmentsDraft.setDraftValue}
                       placeholder="Describe your planned accomplishments..."
                       rows={4}
                     />

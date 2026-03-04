@@ -1,13 +1,24 @@
 import { useRef, useEffect, useCallback } from "react";
+import { Editor } from "@rocktree/ash";
 import { cn } from "../lib/utils";
 
-interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface TextAreaProps
+  extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange"> {
   label?: string;
   error?: string;
   autoExpand?: boolean;
+  onChange?: (value: string) => void;
 }
 
-export function TextArea({ label, error, className, autoExpand = true, ...props }: TextAreaProps) {
+export function TextArea({
+  label,
+  error,
+  className,
+  autoExpand = true,
+  onChange,
+  value,
+  ...props
+}: TextAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const adjustHeight = useCallback(() => {
@@ -23,7 +34,16 @@ export function TextArea({ label, error, className, autoExpand = true, ...props 
   // Adjust height on mount and when value changes
   useEffect(() => {
     adjustHeight();
-  }, [props.value, adjustHeight]);
+  }, [value, adjustHeight]);
+
+  const handleChange = useCallback(
+    (newValue: string) => {
+      onChange?.(newValue);
+      // Schedule height adjustment after React updates the DOM
+      requestAnimationFrame(adjustHeight);
+    },
+    [onChange, adjustHeight]
+  );
 
   return (
     <div className="space-y-1">
@@ -32,9 +52,11 @@ export function TextArea({ label, error, className, autoExpand = true, ...props 
           {label}
         </label>
       )}
-      <textarea
+      <Editor
         ref={textareaRef}
-        onInput={adjustHeight}
+        value={typeof value === "string" ? value : ""}
+        onChange={handleChange}
+        showHints={false}
         className={cn(
           "w-full px-3 py-2 rounded-[var(--radius-md)] text-sm transition-colors",
           "bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)]",
