@@ -160,13 +160,6 @@ export function DailyPublicPage() {
                     </Section>
                   )}
 
-                  {/* Blockers */}
-                  {currentStandup.blockers_html && (
-                    <Section title="Current blockers">
-                      <MarkdownContent html={currentStandup.blockers_html} />
-                    </Section>
-                  )}
-
                   {/* Linked Issues */}
                   {visibleLinkedIssues.length > 0 && (
                     <Section title="Related issues">

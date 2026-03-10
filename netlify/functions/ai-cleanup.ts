@@ -36,7 +36,7 @@ Your job is to:
       ? "yesterday's accomplishments"
       : field === "today_plan"
         ? "today's plan"
-        : "blockers";
+        : "notes";
 
     const userMessage = `Please clean up these standup notes about ${fieldLabel}:
 

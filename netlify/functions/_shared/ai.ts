@@ -46,7 +46,7 @@ export async function generateWeeklySummary(
     date: string;
     yesterday_summary: string;
     today_plan: string;
-    blockers: string;
+    notes: string;
     linked_issues: Array<{ identifier: string; title: string }>;
   }>,
   weeklyPlanning?: {
@@ -71,7 +71,7 @@ ${dailyStandups
 **${d.date}**
 - What was accomplished: ${d.yesterday_summary || "N/A"}
 - What was planned: ${d.today_plan || "N/A"}
-- Blockers: ${d.blockers || "None"}
+- Additional notes: ${d.notes || "None"}
 - Issues worked on: ${d.linked_issues.map((i) => `${i.identifier}: ${i.title}`).join(", ") || "None"}
 `,
   )

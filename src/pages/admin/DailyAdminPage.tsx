@@ -12,7 +12,7 @@ import { useToast, ToastContainer } from "../../components/Toast";
 import { useDraftStorage } from "../../hooks/useDraftStorage";
 import { formatDate, formatDateDisplay, formatDateShort, getWeekdayDate, groupDatesByWeek, timeAgo, cn } from "../../lib/utils";
 
-type PreviewField = "yesterday_summary" | "today_plan" | "blockers";
+type PreviewField = "yesterday_summary" | "today_plan";
 
 export function DailyAdminPage() {
   const { date: dateParam } = useParams<{ date?: string }>();
@@ -66,9 +66,9 @@ export function DailyAdminPage() {
     key: `draft:daily:${selectedDate}:today_plan`,
     savedValue: currentStandup?.today_plan || "",
   });
-  const blockersDraft = useDraftStorage({
-    key: `draft:daily:${selectedDate}:blockers`,
-    savedValue: currentStandup?.blockers || "",
+  const notesDraft = useDraftStorage({
+    key: `draft:daily:${selectedDate}:notes`,
+    savedValue: currentStandup?.notes || "",
   });
 
   // Load linked issues and reset preview when date changes
@@ -85,7 +85,7 @@ export function DailyAdminPage() {
         date: selectedDate,
         yesterday_summary: yesterdayDraft.draftValue || undefined,
         today_plan: todayDraft.draftValue || undefined,
-        blockers: blockersDraft.draftValue || undefined,
+        notes: notesDraft.draftValue || undefined,
         linked_issues: linkedIssues,
       });
 
@@ -103,7 +103,7 @@ export function DailyAdminPage() {
       // Clear drafts after successful save
       yesterdayDraft.clearDraft();
       todayDraft.clearDraft();
-      blockersDraft.clearDraft();
+      notesDraft.clearDraft();
 
       showToast("success", "Standup saved successfully");
     } catch (error) {
@@ -176,11 +176,19 @@ export function DailyAdminPage() {
 
   const yesterdayStandup = getYesterdayStandup();
   const hasYesterdayIssues = (yesterdayStandup?.linked_issues?.length ?? 0) > 0;
-  const hasYesterdayPlan = !!yesterdayStandup?.today_plan;
+  const hasYesterdayContent = !!yesterdayStandup?.today_plan || !!yesterdayStandup?.notes;
 
-  const copyPlanFromYesterday = () => {
-    if (yesterdayStandup?.today_plan) {
-      yesterdayDraft.setDraftValue(yesterdayStandup.today_plan);
+  const copyFromYesterday = () => {
+    if (!yesterdayStandup) return;
+    const parts: string[] = [];
+    if (yesterdayStandup.today_plan) {
+      parts.push(yesterdayStandup.today_plan);
+    }
+    if (yesterdayStandup.notes) {
+      parts.push("**Notes:**\n" + yesterdayStandup.notes);
+    }
+    if (parts.length > 0) {
+      yesterdayDraft.setDraftValue(parts.join("\n\n"));
     }
   };
 
@@ -192,8 +200,6 @@ export function DailyAdminPage() {
         return !!currentStandup.yesterday_summary_html;
       case "today_plan":
         return !!currentStandup.today_plan_html;
-      case "blockers":
-        return !!currentStandup.blockers_html;
     }
   };
 
@@ -204,8 +210,6 @@ export function DailyAdminPage() {
         return currentStandup.yesterday_summary_html || "";
       case "today_plan":
         return currentStandup.today_plan_html || "";
-      case "blockers":
-        return currentStandup.blockers_html || "";
     }
   };
 
@@ -215,8 +219,6 @@ export function DailyAdminPage() {
         return "What Sean accomplished yesterday";
       case "today_plan":
         return "What Sean is working on today";
-      case "blockers":
-        return "Current blockers";
     }
   };
 
@@ -262,14 +264,14 @@ export function DailyAdminPage() {
                 )}
               </button>
             )}
-            {!isPreview && field === "yesterday_summary" && hasYesterdayPlan && (
+            {!isPreview && field === "yesterday_summary" && hasYesterdayContent && (
               <button
                 type="button"
-                onClick={copyPlanFromYesterday}
+                onClick={copyFromYesterday}
                 className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-active)] transition-colors"
               >
                 <Copy className="w-3 h-3" />
-                Copy yesterday's plan
+                Copy from yesterday
               </button>
             )}
             {!isPreview && (
@@ -392,15 +394,28 @@ export function DailyAdminPage() {
                     3
                   )}
 
-                  {/* Blockers */}
-                  {renderFieldWithPreview(
-                    "blockers",
-                    "Any blockers?",
-                    blockersDraft.draftValue,
-                    blockersDraft.setDraftValue,
-                    "Describe any blockers or issues...",
-                    2
-                  )}
+                  {/* Notes (admin-only, not visible publicly) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
+                        Notes
+                        <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)]">
+                          (private - not visible publicly)
+                        </span>
+                      </label>
+                      <AICleanupButton
+                        field="notes"
+                        content={notesDraft.draftValue}
+                        onCleanup={notesDraft.setDraftValue}
+                      />
+                    </div>
+                    <TextArea
+                      value={notesDraft.draftValue}
+                      onChange={notesDraft.setDraftValue}
+                      placeholder="Jot down updates, progress, or anything noteworthy throughout the day..."
+                      rows={2}
+                    />
+                  </div>
 
                   {/* Linked Issues */}
                   <div>
@@ -475,7 +490,7 @@ export function DailyAdminPage() {
                   </div>
 
                   <div className="flex items-center justify-end gap-3">
-                    {(yesterdayDraft.hasDraft || todayDraft.hasDraft || blockersDraft.hasDraft) && (
+                    {(yesterdayDraft.hasDraft || todayDraft.hasDraft || notesDraft.hasDraft) && (
                       <span className="text-xs text-[var(--color-warning-text)] bg-[var(--color-warning-bg)] px-2 py-1 rounded-[var(--radius-sm)]">
                         Unsaved draft
                       </span>
