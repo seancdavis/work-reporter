@@ -47,8 +47,8 @@ export interface DailyStandup {
   yesterday_summary_html: string | null;
   today_plan: string | null;
   today_plan_html: string | null;
-  blockers: string | null;
-  blockers_html: string | null;
+  notes: string | null;
+  notes_html: string | null;
   linked_issues: Array<{ id: string; identifier: string; title: string }>;
   created_at: string;
   updated_at: string;
@@ -180,7 +180,7 @@ export const dailyStandups = {
     date: string;
     yesterday_summary?: string;
     today_plan?: string;
-    blockers?: string;
+    notes?: string;
     linked_issues?: Array<{ id: string; identifier: string; title: string }>;
   }) =>
     fetchApi<DailyStandup>("/daily-standups", {

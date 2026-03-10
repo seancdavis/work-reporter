@@ -48,8 +48,8 @@ export default async (req: Request, context: Context) => {
         yesterday_summary_html: s.yesterdaySummaryHtml,
         today_plan: s.todayPlan,
         today_plan_html: s.todayPlanHtml,
-        blockers: s.blockers,
-        blockers_html: s.blockersHtml,
+        notes: s.notes,
+        notes_html: s.notesHtml,
         linked_issues: s.linkedIssues,
         created_at: s.createdAt,
         updated_at: s.updatedAt,
@@ -71,11 +71,11 @@ export default async (req: Request, context: Context) => {
 
     try {
       const body = await req.json();
-      const { date, yesterday_summary, today_plan, blockers, linked_issues = [] } = body as {
+      const { date, yesterday_summary, today_plan, notes, linked_issues = [] } = body as {
         date: string;
         yesterday_summary?: string;
         today_plan?: string;
-        blockers?: string;
+        notes?: string;
         linked_issues?: Array<{ id: string; identifier: string; title: string }>;
       };
 
@@ -86,7 +86,7 @@ export default async (req: Request, context: Context) => {
       // Parse markdown to HTML
       const yesterdaySummaryHtml = parseMarkdown(yesterday_summary);
       const todayPlanHtml = parseMarkdown(today_plan);
-      const blockersHtml = parseMarkdown(blockers);
+      const notesHtml = parseMarkdown(notes);
 
       const existing = await db
         .select()
@@ -103,8 +103,8 @@ export default async (req: Request, context: Context) => {
             yesterdaySummaryHtml: yesterdaySummaryHtml,
             todayPlan: today_plan || null,
             todayPlanHtml: todayPlanHtml,
-            blockers: blockers || null,
-            blockersHtml: blockersHtml,
+            notes: notes || null,
+            notesHtml: notesHtml,
             linkedIssues: linked_issues,
             updatedAt: new Date(),
           })
@@ -120,8 +120,8 @@ export default async (req: Request, context: Context) => {
             yesterdaySummaryHtml: yesterdaySummaryHtml,
             todayPlan: today_plan || null,
             todayPlanHtml: todayPlanHtml,
-            blockers: blockers || null,
-            blockersHtml: blockersHtml,
+            notes: notes || null,
+            notesHtml: notesHtml,
             linkedIssues: linked_issues,
           })
           .returning();
@@ -135,8 +135,8 @@ export default async (req: Request, context: Context) => {
         yesterday_summary_html: result.yesterdaySummaryHtml,
         today_plan: result.todayPlan,
         today_plan_html: result.todayPlanHtml,
-        blockers: result.blockers,
-        blockers_html: result.blockersHtml,
+        notes: result.notes,
+        notes_html: result.notesHtml,
         linked_issues: result.linkedIssues,
         created_at: result.createdAt,
         updated_at: result.updatedAt,

@@ -93,7 +93,7 @@ export default async (request: Request, context: Context) => {
           date: d.date,
           yesterday_summary: d.yesterdaySummary || "",
           today_plan: d.todayPlan || "",
-          blockers: d.blockers || "",
+          notes: d.notes || "",
           linked_issues: (d.linkedIssues as Array<{ identifier: string; title: string }>) || [],
         })),
         weeklyStandups[0]
