@@ -3,7 +3,7 @@ import { db, schema } from "./_shared/db";
 import { eq, gte, lte, asc, desc } from "drizzle-orm";
 import { requireAdmin, requireAuth } from "./_shared/auth";
 import { generateWeeklySummary } from "./_shared/ai";
-import { formatDate, getWeekStart, getWeekEnd } from "./_shared/utils";
+import { formatDate, getWeekStart, getWeekEnd, sanitizeLinkedIssues } from "./_shared/utils";
 import { parseMarkdown } from "./_shared/markdown";
 
 export default async (request: Request, context: Context) => {
@@ -124,11 +124,12 @@ export default async (request: Request, context: Context) => {
 
     try {
       const body = await request.json();
-      const { week_start, summary, linked_issues } = body as {
+      const { week_start, summary } = body as {
         week_start: string;
         summary?: string;
-        linked_issues?: Array<{ id: string; identifier: string; title: string }>;
+        linked_issues?: unknown;
       };
+      const linked_issues = sanitizeLinkedIssues((body as Record<string, unknown>).linked_issues);
 
       if (!week_start) {
         return Response.json({ error: "week_start is required" }, { status: 400 });
