@@ -2,7 +2,7 @@ import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, desc } from "drizzle-orm";
 import { requireAdmin, requireAuth } from "./_shared/auth";
-import { formatDate, getWeekStart } from "./_shared/utils";
+import { formatDate, getWeekStart, sanitizeLinkedIssues } from "./_shared/utils";
 import { parseMarkdown } from "./_shared/markdown";
 
 export default async (request: Request, context: Context) => {
@@ -67,12 +67,12 @@ export default async (request: Request, context: Context) => {
       const {
         week_start,
         planned_accomplishments,
-        linked_issues = [],
       } = body as {
         week_start: string;
         planned_accomplishments?: string;
-        linked_issues?: Array<{ id: string; identifier: string; title: string }>;
+        linked_issues?: unknown;
       };
+      const linked_issues = sanitizeLinkedIssues((body as Record<string, unknown>).linked_issues);
 
       if (!week_start) {
         return Response.json({ error: "week_start is required" }, { status: 400 });

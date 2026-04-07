@@ -2,7 +2,7 @@ import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, lte, desc } from "drizzle-orm";
 import { requireAdmin, requireAuth } from "./_shared/auth";
-import { formatDate, getWeekEnd } from "./_shared/utils";
+import { formatDate, getWeekEnd, sanitizeLinkedIssues } from "./_shared/utils";
 import { parseMarkdown } from "./_shared/markdown";
 
 export default async (req: Request, context: Context) => {
@@ -76,13 +76,14 @@ export default async (req: Request, context: Context) => {
 
     try {
       const body = await req.json();
-      const { date, yesterday_summary, today_plan, notes, linked_issues = [] } = body as {
+      const { date, yesterday_summary, today_plan, notes } = body as {
         date: string;
         yesterday_summary?: string;
         today_plan?: string;
         notes?: string;
-        linked_issues?: Array<{ id: string; identifier: string; title: string }>;
+        linked_issues?: unknown;
       };
+      const linked_issues = sanitizeLinkedIssues((body as Record<string, unknown>).linked_issues);
 
       if (!date) {
         return Response.json({ error: "Date is required" }, { status: 400 });

@@ -46,3 +46,37 @@ export function getWeekRange(weekStart: Date): string {
 
   return `${startMonth} ${weekStart.getDate()} - ${endMonth} ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
 }
+
+// Validate and sanitize linked issues array from API input.
+// Filters out entries missing required fields and logs warnings for bad data.
+export function sanitizeLinkedIssues(
+  issues: unknown
+): Array<{ id: string; identifier: string; title: string }> {
+  if (!Array.isArray(issues)) return [];
+
+  const valid: Array<{ id: string; identifier: string; title: string }> = [];
+  const invalid: unknown[] = [];
+
+  for (const issue of issues) {
+    if (
+      issue &&
+      typeof issue === "object" &&
+      typeof (issue as Record<string, unknown>).id === "string" &&
+      typeof (issue as Record<string, unknown>).identifier === "string" &&
+      typeof (issue as Record<string, unknown>).title === "string"
+    ) {
+      valid.push(issue as { id: string; identifier: string; title: string });
+    } else {
+      invalid.push(issue);
+    }
+  }
+
+  if (invalid.length > 0) {
+    console.warn(
+      `[sanitizeLinkedIssues] Dropped ${invalid.length} invalid issue(s):`,
+      JSON.stringify(invalid)
+    );
+  }
+
+  return valid;
+}

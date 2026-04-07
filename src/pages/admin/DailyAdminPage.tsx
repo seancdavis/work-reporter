@@ -445,46 +445,63 @@ export function DailyAdminPage() {
                     {/* Display linked issues with titles */}
                     {linkedIssues.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        {linkedIssues.map((issue) => (
+                        {linkedIssues.map((issue, index) => {
+                          const isMalformed = !issue.identifier;
+                          const isPrivate = !isMalformed && issue.identifier.startsWith("SCD-");
+                          return (
                           <div
-                            key={issue.id}
+                            key={issue.id || `malformed-${index}`}
                             className={cn(
                               "flex items-center justify-between gap-2 px-3 py-2 rounded-md border",
-                              issue.identifier.startsWith("SCD-")
+                              isMalformed
+                                ? "bg-[var(--color-danger-bg)] border-[var(--color-danger)]"
+                                : isPrivate
                                 ? "bg-[var(--color-bg-hover)] border-[var(--color-border-primary)]"
                                 : "bg-[var(--color-accent-secondary)] border-[var(--color-border-primary)]"
                             )}
                           >
                             <div className="flex items-center gap-2 min-w-0">
+                              {isMalformed ? (
+                                <span className="text-sm text-[var(--color-danger-text)]">
+                                  Malformed issue (missing identifier) — remove and re-add
+                                </span>
+                              ) : (
+                              <>
                               <span className={cn(
                                 "font-medium text-sm whitespace-nowrap",
-                                issue.identifier.startsWith("SCD-")
+                                isPrivate
                                   ? "text-[var(--color-text-secondary)]"
                                   : "text-[var(--color-accent-text)]"
                               )}>
                                 {issue.identifier}
                               </span>
-                              {issue.identifier.startsWith("SCD-") && (
+                              {isPrivate && (
                                 <Lock className="w-3 h-3 text-[var(--color-text-muted)] flex-shrink-0" />
                               )}
                               <span className={cn(
                                 "text-sm truncate",
-                                issue.identifier.startsWith("SCD-")
+                                isPrivate
                                   ? "text-[var(--color-text-tertiary)]"
                                   : "text-[var(--color-accent-primary)]"
                               )}>
                                 {issue.title}
                               </span>
+                              </>
+                              )}
                             </div>
                             <button
                               type="button"
-                              onClick={() => removeIssue(issue.id)}
+                              onClick={() => isMalformed
+                                ? setLinkedIssues(linkedIssues.filter((_, i) => i !== index))
+                                : removeIssue(issue.id)
+                              }
                               className="flex-shrink-0 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors"
                             >
                               <X className="w-4 h-4" />
                             </button>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

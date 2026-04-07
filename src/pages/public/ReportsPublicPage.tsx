@@ -47,7 +47,7 @@ export function ReportsPublicPage() {
 
   // Filter linked issues for public view (hide SCD- prefixed issues)
   const filterIssues = (issues: Array<{ id: string; identifier: string; title: string }>) =>
-    issues.filter((issue) => !issue.identifier.startsWith("SCD-"));
+    issues.filter((issue) => issue.identifier && !issue.identifier.startsWith("SCD-"));
 
   const visibleLinkedIssues = filterIssues(currentReport?.linked_issues || []);
 

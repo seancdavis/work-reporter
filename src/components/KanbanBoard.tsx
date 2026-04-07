@@ -220,7 +220,7 @@ export function KanbanBoard({
 
             <div className="space-y-2 min-h-[200px]" data-column-area>
               {columnItems.map((item, index) => {
-                const isPrivate = item.linear_issue_identifier.startsWith("SCD-");
+                const isPrivate = item.linear_issue_identifier?.startsWith("SCD-");
                 const daysStale = daysSince(item.updated_at);
                 const isStale = daysStale >= 7;
                 const showDropBefore =

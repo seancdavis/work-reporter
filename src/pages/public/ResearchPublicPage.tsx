@@ -69,7 +69,7 @@ export function ResearchPublicPage() {
   };
 
   // Check if selected item is private (SCD-) - hide Linear badge if so
-  const isSelectedItemPrivate = selectedItem?.linear_issue_identifier.startsWith("SCD-");
+  const isSelectedItemPrivate = selectedItem?.linear_issue_identifier?.startsWith("SCD-");
 
   return (
     <div className="space-y-6 max-w-full">
