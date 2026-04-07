@@ -62,6 +62,19 @@ export async function requireAuth(
 }
 
 /**
+ * Check if request has a valid bearer token (WORK_TRACKER_API_TOKEN)
+ */
+export function hasBearerToken(req: Request): boolean {
+  const authHeader = req.headers.get("authorization");
+  const apiToken = Netlify.env.get("WORK_TRACKER_API_TOKEN");
+  return !!(
+    authHeader?.startsWith("Bearer ") &&
+    apiToken &&
+    authHeader.slice(7) === apiToken
+  );
+}
+
+/**
  * Check if request has admin permission
  */
 export async function requireAdmin(req: Request): Promise<{ authorized: boolean; userId?: string; email?: string }> {
