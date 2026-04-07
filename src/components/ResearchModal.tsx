@@ -42,7 +42,7 @@ export function ResearchModal({
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const isPrivate = item.linear_issue_identifier.startsWith("SCD-");
+  const isPrivate = item.linear_issue_identifier?.startsWith("SCD-");
   const showPlannedIssueSection = item.column === "discussing";
 
   // Focus input when editing starts

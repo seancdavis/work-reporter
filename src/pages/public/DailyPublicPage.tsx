@@ -55,7 +55,7 @@ export function DailyPublicPage() {
 
   // Filter linked issues for public view (hide SCD- prefixed issues)
   const visibleLinkedIssues = currentStandup?.linked_issues?.filter(
-    (issue) => !issue.identifier.startsWith("SCD-")
+    (issue) => issue.identifier && !issue.identifier.startsWith("SCD-")
   ) || [];
 
   // Section component for consistent styling

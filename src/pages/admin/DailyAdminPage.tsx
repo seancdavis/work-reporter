@@ -445,7 +445,7 @@ export function DailyAdminPage() {
                     {/* Display linked issues with titles */}
                     {linkedIssues.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        {linkedIssues.map((issue) => (
+                        {linkedIssues.filter((issue) => issue.identifier).map((issue) => (
                           <div
                             key={issue.id}
                             className={cn(
