@@ -64,9 +64,19 @@ export default async (req: Request, context: Context) => {
 
   // POST - Create or update standup
   if (req.method === "POST") {
-    const auth = await requireAdmin(req);
-    if (!auth.authorized) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    // Allow bearer token auth (for API clients) or admin session auth (for browser)
+    const authHeader = req.headers.get("authorization");
+    const apiToken = Netlify.env.get("WORK_TRACKER_API_TOKEN");
+    const isBearerAuth =
+      authHeader?.startsWith("Bearer ") &&
+      apiToken &&
+      authHeader.slice(7) === apiToken;
+
+    if (!isBearerAuth) {
+      const auth = await requireAdmin(req);
+      if (!auth.authorized) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     try {
