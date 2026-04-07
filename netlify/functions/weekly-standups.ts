@@ -1,7 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, desc } from "drizzle-orm";
-import { requireAdmin } from "./_shared/auth";
+import { requireAdmin, requireAuth } from "./_shared/auth";
 import { formatDate, getWeekStart } from "./_shared/utils";
 import { parseMarkdown } from "./_shared/markdown";
 
@@ -10,6 +10,11 @@ export default async (request: Request, context: Context) => {
 
   // GET /api/weekly-standups - List weekly standups
   if (request.method === "GET") {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated || !auth.permissions?.read) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
       const weekParam = url.searchParams.get("week");
 

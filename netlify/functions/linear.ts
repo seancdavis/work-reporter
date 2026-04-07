@@ -1,18 +1,15 @@
 import type { Context, Config } from "@netlify/functions";
 import { getActiveIssues, searchIssues } from "./_shared/linear";
-import { requireAuth, hasBearerToken } from "./_shared/auth";
+import { requireAuth } from "./_shared/auth";
 
 export default async (request: Request, context: Context) => {
   if (request.method !== "GET") {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  // Allow bearer token auth (for API clients) or session auth (for browser)
-  if (!hasBearerToken(request)) {
-    const auth = await requireAuth(request);
-    if (!auth.authenticated || !auth.permissions?.read) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const auth = await requireAuth(request);
+  if (!auth.authenticated || !auth.permissions?.read) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const url = new URL(request.url);

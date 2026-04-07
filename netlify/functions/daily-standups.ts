@@ -1,7 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, gte, lte, desc } from "drizzle-orm";
-import { requireAdmin, requireAuth, hasBearerToken } from "./_shared/auth";
+import { requireAdmin, requireAuth } from "./_shared/auth";
 import { formatDate, getWeekEnd } from "./_shared/utils";
 import { parseMarkdown } from "./_shared/markdown";
 
@@ -10,11 +10,9 @@ export default async (req: Request, context: Context) => {
 
   // GET - List standups
   if (req.method === "GET") {
-    if (!hasBearerToken(req)) {
-      const auth = await requireAuth(req);
-      if (!auth.authenticated || !auth.permissions?.read) {
-        return Response.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    const auth = await requireAuth(req);
+    if (!auth.authenticated || !auth.permissions?.read) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
@@ -71,12 +69,9 @@ export default async (req: Request, context: Context) => {
 
   // POST - Create or update standup
   if (req.method === "POST") {
-    // Allow bearer token auth (for API clients) or admin session auth (for browser)
-    if (!hasBearerToken(req)) {
-      const auth = await requireAdmin(req);
-      if (!auth.authorized) {
-        return Response.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
