@@ -37,11 +37,22 @@ export function getPermissionsFromEmail(email: string): AuthPermissions {
 }
 
 /**
- * Validates request authentication using headers and returns permissions
+ * Validates request authentication using headers and returns permissions.
+ * A valid bearer token (WORK_TRACKER_API_TOKEN) grants full admin permissions.
  */
 export async function requireAuth(
   req: Request
 ): Promise<{ authenticated: boolean; userId?: string; email?: string; permissions?: AuthPermissions }> {
+  // Bearer token grants full admin access (for programmatic API clients)
+  if (hasBearerToken(req)) {
+    return {
+      authenticated: true,
+      userId: "api-token",
+      email: "api-token",
+      permissions: { read: true, viewKudos: true, admin: true },
+    };
+  }
+
   const userId = req.headers.get("x-user-id");
   const email = req.headers.get("x-user-email");
 
@@ -59,6 +70,19 @@ export async function requireAuth(
   }
 
   return { authenticated: true, userId, email, permissions };
+}
+
+/**
+ * Check if request has a valid bearer token (WORK_TRACKER_API_TOKEN)
+ */
+export function hasBearerToken(req: Request): boolean {
+  const authHeader = req.headers.get("authorization");
+  const apiToken = Netlify.env.get("WORK_TRACKER_API_TOKEN");
+  return !!(
+    authHeader?.startsWith("Bearer ") &&
+    apiToken &&
+    authHeader.slice(7) === apiToken
+  );
 }
 
 /**

@@ -1,7 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, desc, asc } from "drizzle-orm";
-import { requireAdmin } from "./_shared/auth";
+import { requireAdmin, requireAuth } from "./_shared/auth";
 import { uploadScreenshot, deleteScreenshot } from "./_shared/blobs";
 import { parseMarkdown } from "./_shared/markdown";
 
@@ -25,8 +25,13 @@ function toApiResponse(k: typeof schema.kudos.$inferSelect) {
 export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
 
-  // GET /api/kudos - List kudos (read-only, no auth required)
+  // GET /api/kudos - List kudos
   if (request.method === "GET") {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated || !auth.permissions?.viewKudos) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
       const limitParam = url.searchParams.get("limit");
       const limit = limitParam ? parseInt(limitParam) : 50;

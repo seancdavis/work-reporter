@@ -1,7 +1,7 @@
 import type { Context, Config } from "@netlify/functions";
 import { db, schema } from "./_shared/db";
 import { eq, asc } from "drizzle-orm";
-import { requireAdmin } from "./_shared/auth";
+import { requireAdmin, requireAuth } from "./_shared/auth";
 import { parseMarkdown } from "./_shared/markdown";
 import { updateIssueTitle, updateIssueDescription, addComment, updateComment, updateIssueState, getIssueTeamId, getWorkflowStates, getIssuesByIds, getIssueById } from "./_shared/linear";
 import { inArray } from "drizzle-orm";
@@ -90,6 +90,14 @@ export default async (request: Request, context: Context) => {
   const isSyncFromLinearEndpoint = pathParts.length >= 4 && pathParts[3] === "sync-from-linear";
   const noteIdFromPath = pathParts.length >= 5 && isNotesEndpoint ? parseInt(pathParts[4]) : null;
   const documentIdFromPath = pathParts.length >= 5 && isDocumentsEndpoint ? parseInt(pathParts[4]) : null;
+
+  // Auth gate: GET requires read permission, all other methods require admin
+  if (request.method === "GET") {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated || !auth.permissions?.read) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
 
   // GET /api/research - List all research items with notes
   if (request.method === "GET" && !itemIdFromPath) {

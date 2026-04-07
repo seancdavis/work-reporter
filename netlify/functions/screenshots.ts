@@ -1,9 +1,15 @@
 import type { Context, Config } from "@netlify/functions";
 import { getScreenshot } from "./_shared/blobs";
+import { requireAuth } from "./_shared/auth";
 
 export default async (request: Request, context: Context) => {
   if (request.method !== "GET") {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
+  }
+
+  const auth = await requireAuth(request);
+  if (!auth.authenticated || !auth.permissions?.read) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const url = new URL(request.url);
